@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hoop Frens — We Talk Hoops. Everyone's Welcome.</title>
+  <meta name="description" content="Hoop Frens is a basketball media platform covering players, coaches, schools, and stories across every level of college basketball — JUCO, NCAA DII, DIII, NAIA, NCCAA, and USCAA. We shine a spotlight on programs and athletes that deserve more attention." />
+  <meta name="keywords" content="college basketball media, JUCO basketball, NCAA DII, DIII basketball, NAIA basketball, NCCAA, USCAA, college basketball recruiting, basketball scholarships, basketball stories" />
+  <meta property="og:title" content="Hoop Frens — We Talk Hoops. Everyone's Welcome." />
+  <meta property="og:description" content="Discover stories, rankings, and recruiting resources for every level of college basketball." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hoopfrens.com" />
+  <link rel="canonical" href="https://hoopfrens.com" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Basketball favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
+</head>
+<body>
+
+  <!-- ============================================================
+       NAVBAR
+       ============================================================ -->
+  <nav class="navbar" id="navbar" aria-label="Main navigation">
+    <div class="navbar-inner">
+      <a href="#" class="nav-logo" aria-label="Hoop Frens Home">Hoop<span>Frens</span></a>
+      <ul class="nav-links" role="list">
+        <li><a href="#divisions">Divisions</a></li>
+        <li><a href="#stories">Stories</a></li>
+        <li><a href="#recruiting">Recruiting</a></li>
+        <li><a href="#rankings">Rankings</a></li>
+        <li><a href="#podcast">Podcast</a></li>
+      </ul>
+      <a href="#newsletter" class="btn btn-primary nav-cta">Join the Community</a>
+      <button class="nav-hamburger" id="hamburgerBtn" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Mobile navigation">
+    <button class="mobile-close" id="mobileClose" aria-label="Close menu">✕</button>
+    <a href="#divisions" class="mobile-nav-link">Divisions</a>
+    <a href="#stories" class="mobile-nav-link">Stories</a>
+    <a href="#recruiting" class="mobile-nav-link">Recruiting</a>
+    <a href="#rankings" class="mobile-nav-link">Rankings</a>
+    <a href="#podcast" class="mobile-nav-link">Podcast</a>
+    <a href="#newsletter" class="mobile-nav-link">Join Community</a>
+  </div>
+
+  <main>
+
+    <!-- ============================================================
+         HERO SECTION
+         ============================================================ -->
+    <section class="hero" id="hero" aria-label="Hero section">
+      <div class="hero-bg" id="heroBg"></div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="container">
+          <div class="hero-badge">🏀 We Talk Hoops. Everyone's Welcome.</div>
+          <h1 class="hero-title">
+            The Home for<br /><span class="highlight">Every Level</span><br />of College Basketball
+          </h1>
+          <p class="hero-subtitle">
+            We cover the players, coaches, schools, and stories across every pathway in college basketball — with a special focus on the levels that deserve more attention.
+          </p>
+          <div class="hero-actions">
+            <a href="#divisions" class="btn btn-primary" id="heroExploreDivisions">
+              Explore Divisions →
+            </a>
+            <a href="#stories" class="btn btn-outline" id="heroLatestStories">
+              Latest Stories
+            </a>
+          </div>
+          <div class="hero-scroll-hint">
+            <div class="scroll-line"></div>
+            Scroll to explore
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TICKER
+         ============================================================ -->
+    <div class="ticker-bar" aria-label="News ticker" aria-hidden="true">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">JUCO Basketball</span>
+        <span class="ticker-item">NCAA Division II</span>
+        <span class="ticker-item">NCAA Division III</span>
+        <span class="ticker-item">NAIA Championships</span>
+        <span class="ticker-item">Transfer Portal News</span>
+        <span class="ticker-item">Recruiting Insights</span>
+        <span class="ticker-item">Player Spotlights</span>
+        <span class="ticker-item">Coach Interviews</span>
+        <span class="ticker-item">Rankings Updated</span>
+        <span class="ticker-item">NCCAA Basketball</span>
+        <span class="ticker-item">USCAA Coverage</span>
+        <span class="ticker-item">NIL Education</span>
+        <!-- Duplicated for seamless loop -->
+        <span class="ticker-item">JUCO Basketball</span>
+        <span class="ticker-item">NCAA Division II</span>
+        <span class="ticker-item">NCAA Division III</span>
+        <span class="ticker-item">NAIA Championships</span>
+        <span class="ticker-item">Transfer Portal News</span>
+        <span class="ticker-item">Recruiting Insights</span>
+        <span class="ticker-item">Player Spotlights</span>
+        <span class="ticker-item">Coach Interviews</span>
+        <span class="ticker-item">Rankings Updated</span>
+        <span class="ticker-item">NCCAA Basketball</span>
+        <span class="ticker-item">USCAA Coverage</span>
+        <span class="ticker-item">NIL Education</span>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         DIVISION HUB SECTION
+         ============================================================ -->
+    <section class="divisions-section" id="divisions" aria-labelledby="divisionsSectionTitle">
+      <div class="container">
+        <div class="divisions-header">
+          <div class="section-label">Every Pathway Covered</div>
+          <h2 class="section-title" id="divisionsSectionTitle">Every Level.<br />Every Story.</h2>
+          <p class="section-subtitle" style="margin: 0 auto;">
+            Great basketball exists at every level. We cover all of them — because every program, coach, and player deserves to be seen.
+          </p>
+        </div>
+        <div class="divisions-grid">
+
+          <article class="division-card fade-up" id="jucoCard" tabindex="0" role="button" aria-label="JUCO Division">
+            <div class="division-card-top">
+              <div class="division-icon">🏫</div>
+              <span class="division-level-tag">JUCO</span>
+            </div>
+            <h3 class="division-name">Junior College</h3>
+            <p class="division-desc">
+              Two-year programs that offer full athletic scholarships, competitive basketball, and a clear pathway to four-year colleges. Perfect for players who need development time or academic flexibility.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">525+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">Full</div>
+                <div class="division-stat-label">Scholarships</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">2 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore JUCO →</span>
+          </article>
+
+          <article class="division-card fade-up fade-up-delay-1" id="diiCard" tabindex="0" role="button" aria-label="NCAA Division II">
+            <div class="division-card-top">
+              <div class="division-icon">🎓</div>
+              <span class="division-level-tag">NCAA DII</span>
+            </div>
+            <h3 class="division-name">NCAA Division II</h3>
+            <p class="division-desc">
+              A true student-athlete experience. DII programs offer partial-to-full scholarships, intense competition, and a genuine championship path — with a culture built around development and community.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">300+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">10</div>
+                <div class="division-stat-label">Scholarship Slots</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">4 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore DII →</span>
+          </article>
+
+          <article class="division-card fade-up fade-up-delay-2" id="diiiCard" tabindex="0" role="button" aria-label="NCAA Division III">
+            <div class="division-card-top">
+              <div class="division-icon">📚</div>
+              <span class="division-level-tag">NCAA DIII</span>
+            </div>
+            <h3 class="division-name">NCAA Division III</h3>
+            <p class="division-desc">
+              The largest NCAA division with 450+ schools. No athletic scholarships, but robust academic financial aid and a pure love-of-the-game atmosphere at elite academic institutions.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">450+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">High</div>
+                <div class="division-stat-label">Academic Aid</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">4 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore DIII →</span>
+          </article>
+
+          <article class="division-card fade-up fade-up-delay-3" id="naiaCard" tabindex="0" role="button" aria-label="NAIA">
+            <div class="division-card-top">
+              <div class="division-icon">⭐</div>
+              <span class="division-level-tag">NAIA</span>
+            </div>
+            <h3 class="division-name">NAIA</h3>
+            <p class="division-desc">
+              An independent governing body with 250+ member schools. NAIA offers full athletic scholarships, fewer eligibility restrictions, and incredible opportunities for overlooked talent.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">250+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">Full</div>
+                <div class="division-stat-label">Scholarships</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">4 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore NAIA →</span>
+          </article>
+
+          <article class="division-card fade-up fade-up-delay-4" id="nccaaCard" tabindex="0" role="button" aria-label="NCCAA">
+            <div class="division-card-top">
+              <div class="division-icon">✝️</div>
+              <span class="division-level-tag">NCCAA</span>
+            </div>
+            <h3 class="division-name">NCCAA</h3>
+            <p class="division-desc">
+              The National Christian College Athletic Association. Faith-based athletics with competitive basketball and scholarship opportunities at over 100 Christian colleges and universities.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">100+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">Aid</div>
+                <div class="division-stat-label">Available</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">4 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore NCCAA →</span>
+          </article>
+
+          <article class="division-card fade-up fade-up-delay-5" id="uscaaCard" tabindex="0" role="button" aria-label="USCAA">
+            <div class="division-card-top">
+              <div class="division-icon">🏆</div>
+              <span class="division-level-tag">USCAA</span>
+            </div>
+            <h3 class="division-name">USCAA</h3>
+            <p class="division-desc">
+              The United States Collegiate Athletic Association. Small college athletics with a championship structure and competitive basketball for programs that want an organized national platform.
+            </p>
+            <div class="division-stats">
+              <div class="division-stat-item">
+                <div class="division-stat-num">50+</div>
+                <div class="division-stat-label">Schools</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">Aid</div>
+                <div class="division-stat-label">Available</div>
+              </div>
+              <div class="division-stat-item">
+                <div class="division-stat-num">4 yr</div>
+                <div class="division-stat-label">Programs</div>
+              </div>
+            </div>
+            <span class="division-link">Explore USCAA →</span>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         ABOUT / MISSION SECTION
+         ============================================================ -->
+    <section class="about-section" id="about" aria-labelledby="aboutSectionTitle">
+      <div class="container">
+        <div class="about-inner">
+          <div class="about-text fade-up">
+            <div class="section-label">Our Mission</div>
+            <h2 class="section-title" id="aboutSectionTitle">Built for the Stories<br />That Deserve to Be Told</h2>
+            <p class="about-body">
+              Hoop Frens was created to give visibility to the thousands of players, coaches, and programs across college basketball that deserve recognition. We believe every level has great stories, valuable opportunities, and passionate communities.
+            </p>
+            <p class="about-body">
+              From the JUCO gym in East Texas to the DIII arena in New England — we show up for all of it. We are not here to rank one level against another. We are here because we genuinely love the game at every level. And while we may occasionally cover Division I news, our heart belongs to the programs and athletes that mainstream media too often overlooks.
+            </p>
+            <div class="about-pillars">
+              <div class="about-pillar">
+                <div class="about-pillar-icon">🎯</div>
+                <div class="about-pillar-label">Opportunity</div>
+              </div>
+              <div class="about-pillar">
+                <div class="about-pillar-icon">📣</div>
+                <div class="about-pillar-label">Exposure</div>
+              </div>
+              <div class="about-pillar">
+                <div class="about-pillar-icon">🤝</div>
+                <div class="about-pillar-label">Community</div>
+              </div>
+              <div class="about-pillar">
+                <div class="about-pillar-icon">📚</div>
+                <div class="about-pillar-label">Education</div>
+              </div>
+              <div class="about-pillar">
+                <div class="about-pillar-icon">🏀</div>
+                <div class="about-pillar-label">Basketball Culture</div>
+              </div>
+            </div>
+          </div>
+          <div class="about-quote-block fade-up fade-up-delay-2">
+            <div class="about-quote">
+              &ldquo;There are thousands of college basketball programs in America. Most of them will never appear on ESPN. That doesn't mean their stories aren't worth telling. That's exactly why Hoop Frens exists.&rdquo;
+            </div>
+            <div class="about-quote-author">
+              <div class="about-quote-name">The Hoop Frens Team</div>
+              <div class="about-quote-title">Founders &amp; Storytellers</div>
+            </div>
+            <div class="about-promise">
+              <span class="about-promise-text">We Talk Hoops. Everyone's Welcome. 🏀</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         FEATURED STORIES SECTION
+         ============================================================ -->
+    <section class="stories-section" id="stories" aria-labelledby="storiesSectionTitle">
+      <div class="container">
+        <div class="stories-header">
+          <div>
+            <div class="section-label">Stories From Every Level</div>
+            <h2 class="section-title" id="storiesSectionTitle">Featured Stories</h2>
+            <div class="category-pills" role="tablist" aria-label="Story categories">
+              <button class="pill active" role="tab" data-cat="all" id="pillAll">All</button>
+              <button class="pill" role="tab" data-cat="player" id="pillPlayer">Player Spotlight</button>
+              <button class="pill" role="tab" data-cat="coach" id="pillCoach">Coach Spotlight</button>
+              <button class="pill" role="tab" data-cat="school" id="pillSchool">School Spotlight</button>
+              <button class="pill" role="tab" data-cat="recruiting" id="pillRecruiting">Recruiting</button>
+              <button class="pill" role="tab" data-cat="success" id="pillSuccess">Success Stories</button>
+              <button class="pill" role="tab" data-cat="transfer" id="pillTransfer">Transfer Portal</button>
+            </div>
+          </div>
+          <a href="#" class="btn btn-outline" id="viewAllStories">View All Stories</a>
+        </div>
+
+        <div class="stories-grid">
+          <!-- Main featured story -->
+          <article class="story-card-main fade-up" id="featuredStoryMain" tabindex="0" aria-label="Featured story: The NAIA is Having Its Moment">
+            <img src="assets/featured_story.png" alt="College basketball player in action" />
+            <div class="story-main-overlay">
+              <div class="story-category">Player Spotlight</div>
+              <h3 class="story-main-title">The NAIA Is Having Its Moment — And These Players Are Proof</h3>
+              <div class="story-meta">
+                <span>📅 June 9, 2026</span>
+                <span>✍️ Hoop Frens Staff</span>
+                <span>⏱ 6 min read</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Supporting stories -->
+          <article class="story-card-small fade-up fade-up-delay-1" id="storySm1" tabindex="0" aria-label="Story: Why DII Programs Are the Best-Kept Secret in Recruiting">
+            <img class="story-card-small-img" src="assets/player_spotlight.png" alt="Basketball player" />
+            <div class="story-card-small-body">
+              <div class="story-small-category">Recruiting</div>
+              <h3 class="story-small-title">Why DII Programs Are the Best-Kept Secret in Recruiting</h3>
+              <div class="story-small-date">June 8, 2026 · 4 min read</div>
+            </div>
+          </article>
+
+          <article class="story-card-small fade-up fade-up-delay-2" id="storySm2" tabindex="0" aria-label="Story: JUCO Transfer Portal Guide for 2026">
+            <img class="story-card-small-img" src="assets/coach_spotlight.png" alt="Basketball coach" />
+            <div class="story-card-small-body">
+              <div class="story-small-category">Transfer Portal</div>
+              <h3 class="story-small-title">JUCO Transfer Portal: A Complete Guide for 2026 Players</h3>
+              <div class="story-small-date">June 7, 2026 · 5 min read</div>
+            </div>
+          </article>
+
+          <article class="story-card-small fade-up fade-up-delay-3" id="storySm3" tabindex="0" aria-label="Story: Top 10 DIII Schools You Need to Know">
+            <img class="story-card-small-img" src="assets/featured_story.png" alt="Basketball game" />
+            <div class="story-card-small-body">
+              <div class="story-small-category">Rankings</div>
+              <h3 class="story-small-title">Top 10 DIII Schools You Should Know Before Committing</h3>
+              <div class="story-small-date">June 6, 2026 · 3 min read</div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         RECRUITING RESOURCE SECTION
+         ============================================================ -->
+    <section class="recruiting-section" id="recruiting" aria-labelledby="recruitingSectionTitle">
+      <div class="container">
+        <div class="recruiting-inner">
+          <div>
+            <div class="section-label">Recruiting Center</div>
+            <h2 class="section-title" id="recruitingSectionTitle">Your Recruiting Journey<br />Starts Here</h2>
+            <p class="section-subtitle">
+              Everything you need — timelines, contact templates, eligibility rules, scholarship breakdowns, and NIL education — all in one place.
+            </p>
+            <div style="margin-top: 32px; display: flex; gap: 14px; flex-wrap: wrap;">
+              <a href="#" class="btn btn-primary" id="exploreRecruiting">Explore Resources →</a>
+              <a href="#" class="btn btn-outline" id="downloadGuide">Download Free Guide</a>
+            </div>
+          </div>
+          <div class="recruiting-resources">
+            <div class="resource-card fade-up" id="resourceTimeline">
+              <div class="resource-icon">📅</div>
+              <div class="resource-title">Recruiting Timelines</div>
+              <div class="resource-desc">Know exactly when to start, when to contact coaches, and when decisions need to be made.</div>
+            </div>
+            <div class="resource-card fade-up fade-up-delay-1" id="resourceTemplates">
+              <div class="resource-icon">✉️</div>
+              <div class="resource-title">Contact Templates</div>
+              <div class="resource-desc">Proven email templates to reach out to coaches at every level — professionally and effectively.</div>
+            </div>
+            <div class="resource-card fade-up fade-up-delay-2" id="resourceEligibility">
+              <div class="resource-icon">📋</div>
+              <div class="resource-title">Eligibility Guidance</div>
+              <div class="resource-desc">NCAA, NAIA, and NJCAA eligibility rules explained in plain language for players and parents.</div>
+            </div>
+            <div class="resource-card fade-up fade-up-delay-3" id="resourceScholarships">
+              <div class="resource-icon">💰</div>
+              <div class="resource-title">Scholarship Info</div>
+              <div class="resource-desc">How scholarships work at each level — full rides, partial aid, academic scholarships and more.</div>
+            </div>
+            <div class="resource-card fade-up fade-up-delay-4" id="resourceNIL">
+              <div class="resource-icon">🤝</div>
+              <div class="resource-title">NIL Education</div>
+              <div class="resource-desc">Understand Name, Image, and Likeness rules across different governing bodies and divisions.</div>
+            </div>
+            <div class="resource-card fade-up fade-up-delay-5" id="resourceSchoolsDir">
+              <div class="resource-icon">🔍</div>
+              <div class="resource-title">Schools Directory</div>
+              <div class="resource-desc">Search and filter hundreds of schools by division, state, conference, and scholarship availability.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         PLAYER & COACH SPOTLIGHTS
+         ============================================================ -->
+    <section class="spotlights-section" id="spotlights" aria-labelledby="spotlightsSectionTitle">
+      <div class="container">
+        <div class="section-label">Hoop Frens Spotlight</div>
+        <h2 class="section-title" id="spotlightsSectionTitle">Players, Coaches<br />&amp; Schools</h2>
+        <p class="section-subtitle">We shine a light on the athletes, coaches, and programs working hard every day — at the levels mainstream media often overlooks.</p>
+
+        <div class="spotlights-tabs" role="tablist" aria-label="Spotlight type">
+          <button class="tab-btn active" id="tabPlayers" data-tab="players" role="tab" aria-selected="true">🏀 Player Spotlights</button>
+          <button class="tab-btn" id="tabCoaches" data-tab="coaches" role="tab" aria-selected="false">📋 Coach Spotlights</button>
+          <button class="tab-btn" id="tabSchools" data-tab="schools" role="tab" aria-selected="false">🏫 School Spotlights</button>
+        </div>
+
+        <!-- Players Tab -->
+        <div class="spotlights-grid" id="playersTab" role="tabpanel" aria-labelledby="tabPlayers">
+          <article class="spotlight-card fade-up" id="playerCard1">
+            <img class="spotlight-img" src="assets/player_spotlight.png" alt="Marcus Reid - Point Guard at Lincoln University" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">JUCO · Region XIV</div>
+              <h3 class="spotlight-name">Marcus Reid</h3>
+              <div class="spotlight-school">Lincoln University · PG</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">22.4</div><div class="spotlight-stat-label">PPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">7.1</div><div class="spotlight-stat-label">APG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">3.8</div><div class="spotlight-stat-label">RPG</div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="spotlight-card fade-up fade-up-delay-1" id="playerCard2">
+            <img class="spotlight-img" src="assets/player_spotlight.png" alt="Darnell Brooks - Small Forward at Eckerd College" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DII · SSC</div>
+              <h3 class="spotlight-name">Darnell Brooks</h3>
+              <div class="spotlight-school">Eckerd College · SF</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">18.9</div><div class="spotlight-stat-label">PPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">8.2</div><div class="spotlight-stat-label">RPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">2.4</div><div class="spotlight-stat-label">BPG</div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="spotlight-card fade-up fade-up-delay-2" id="playerCard3">
+            <img class="spotlight-img" src="assets/player_spotlight.png" alt="Jalen Torres - Guard at Trine University" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DIII · MIAA</div>
+              <h3 class="spotlight-name">Jalen Torres</h3>
+              <div class="spotlight-school">Trine University · G</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">19.7</div><div class="spotlight-stat-label">PPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">4.5</div><div class="spotlight-stat-label">APG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">44%</div><div class="spotlight-stat-label">3PT%</div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="spotlight-card fade-up fade-up-delay-3" id="playerCard4">
+            <img class="spotlight-img" src="assets/player_spotlight.png" alt="Antoine Gaines - Center at Campbellsville" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NAIA · MSC</div>
+              <h3 class="spotlight-name">Antoine Gaines</h3>
+              <div class="spotlight-school">Campbellsville Univ. · C</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">15.3</div><div class="spotlight-stat-label">PPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">11.4</div><div class="spotlight-stat-label">RPG</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">3.1</div><div class="spotlight-stat-label">BPG</div></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Coaches Tab (hidden by default) -->
+        <div class="spotlights-grid" id="coachesTab" role="tabpanel" aria-labelledby="tabCoaches" style="display:none;">
+          <article class="spotlight-card fade-up" id="coachCard1">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Coach Michael Davis - JUCO Head Coach" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">JUCO · Tyler Junior College</div>
+              <h3 class="spotlight-name">Coach Michael Davis</h3>
+              <div class="spotlight-school">Tyler JC · 14 yrs coaching</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">287</div><div class="spotlight-stat-label">Wins</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">12</div><div class="spotlight-stat-label">Conf Titles</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">3x</div><div class="spotlight-stat-label">CoY</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-1" id="coachCard2">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Coach Sandra Wills - DII Head Coach" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DII · Bellarmine Univ.</div>
+              <h3 class="spotlight-name">Coach Sandra Wills</h3>
+              <div class="spotlight-school">Bellarmine · 9 yrs coaching</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">198</div><div class="spotlight-stat-label">Wins</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">5</div><div class="spotlight-stat-label">Tourney Runs</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">2x</div><div class="spotlight-stat-label">Champions</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-2" id="coachCard3">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Coach Ray Thompson - NAIA" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NAIA · Oklahoma Wesleyan</div>
+              <h3 class="spotlight-name">Coach Ray Thompson</h3>
+              <div class="spotlight-school">OWU · 18 yrs coaching</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">412</div><div class="spotlight-stat-label">Wins</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">8</div><div class="spotlight-stat-label">Conf Titles</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">2x</div><div class="spotlight-stat-label">Natl Champs</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-3" id="coachCard4">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Coach James Prado - DIII" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DIII · Williams College</div>
+              <h3 class="spotlight-name">Coach James Prado</h3>
+              <div class="spotlight-school">Williams College · 11 yrs</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">221</div><div class="spotlight-stat-label">Wins</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">7</div><div class="spotlight-stat-label">NESCAC Titles</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">1x</div><div class="spotlight-stat-label">Final Four</div></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Schools Tab (hidden by default) -->
+        <div class="spotlights-grid" id="schoolsTab" role="tabpanel" aria-labelledby="tabSchools" style="display:none;">
+          <article class="spotlight-card fade-up" id="schoolCard1">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Tyler Junior College Basketball" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">JUCO &middot; Region XIV</div>
+              <h3 class="spotlight-name">Tyler Junior College</h3>
+              <div class="spotlight-school">Tyler, TX &middot; Est. 1926</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">28+</div><div class="spotlight-stat-label">Natl Titles</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">Full</div><div class="spotlight-stat-label">Scholarships</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">100%</div><div class="spotlight-stat-label">Transfer Rate</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-1" id="schoolCard2">
+            <img class="spotlight-img" src="assets/player_spotlight.png" alt="Campbellsville University Basketball" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NAIA &middot; Mid-South Conference</div>
+              <h3 class="spotlight-name">Campbellsville Univ.</h3>
+              <div class="spotlight-school">Campbellsville, KY</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">5x</div><div class="spotlight-stat-label">Natl Champs</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">Full</div><div class="spotlight-stat-label">Aid Available</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">Top 10</div><div class="spotlight-stat-label">NAIA Program</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-2" id="schoolCard3">
+            <img class="spotlight-img" src="assets/featured_story.png" alt="Ferris State University Basketball" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DII &middot; GLIAC</div>
+              <h3 class="spotlight-name">Ferris State Univ.</h3>
+              <div class="spotlight-school">Big Rapids, MI</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">2x</div><div class="spotlight-stat-label">DII Champs</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">10</div><div class="spotlight-stat-label">Schol. Slots</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">Top 5</div><div class="spotlight-stat-label">DII Program</div></div>
+              </div>
+            </div>
+          </article>
+          <article class="spotlight-card fade-up fade-up-delay-3" id="schoolCard4">
+            <img class="spotlight-img" src="assets/coach_spotlight.png" alt="Williams College Basketball" />
+            <div class="spotlight-body">
+              <div class="spotlight-level">NCAA DIII &middot; NESCAC</div>
+              <h3 class="spotlight-name">Williams College</h3>
+              <div class="spotlight-school">Williamstown, MA</div>
+              <div class="spotlight-stats">
+                <div class="spotlight-stat"><div class="spotlight-stat-num">3x</div><div class="spotlight-stat-label">DIII Elite 8</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">#3</div><div class="spotlight-stat-label">Academic Rank</div></div>
+                <div class="spotlight-stat"><div class="spotlight-stat-num">Top 10</div><div class="spotlight-stat-label">DIII Program</div></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================================
+         RANKINGS SECTION
+         ============================================================ -->
+    <section class="rankings-section" id="rankings" aria-labelledby="rankingsSectionTitle">
+      <div class="container">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:48px; flex-wrap:wrap; gap:20px;">
+          <div>
+            <div class="section-label">Hoop Frens Power Rankings</div>
+            <h2 class="section-title" id="rankingsSectionTitle">Rankings</h2>
+          </div>
+          <a href="#" class="btn btn-outline" id="fullRankingsLink">Full Rankings →</a>
+        </div>
+
+        <div class="rankings-inner">
+
+          <!-- Top 25 Teams -->
+          <div class="rankings-block fade-up" id="rankTeams">
+            <div class="rankings-block-header">
+              <div class="rankings-block-title">🏆 Top 25 Teams</div>
+              <a href="#" class="rankings-see-all" id="seeAllTeams">See All</a>
+            </div>
+            <div class="rankings-list">
+              <div class="ranking-item"><div class="ranking-num top-3">1</div><div class="ranking-info"><div class="ranking-name">Point Park Univ.</div><div class="ranking-sub">NAIA · KIAC</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">2</div><div class="ranking-info"><div class="ranking-name">Tyler Junior College</div><div class="ranking-sub">JUCO · Region XIV</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">3</div><div class="ranking-info"><div class="ranking-name">Northwest Missouri</div><div class="ranking-sub">NCAA DII · MIAA</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num">4</div><div class="ranking-info"><div class="ranking-name">Transylvania Univ.</div><div class="ranking-sub">NCAA DIII · SAA</div></div><span class="ranking-badge">DIII</span></div>
+              <div class="ranking-item"><div class="ranking-num">5</div><div class="ranking-info"><div class="ranking-name">Campbellsville Univ.</div><div class="ranking-sub">NAIA · MSC</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num">6</div><div class="ranking-info"><div class="ranking-name">Eastern Wyoming CC</div><div class="ranking-sub">JUCO · Scenic West</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num">7</div><div class="ranking-info"><div class="ranking-name">Ferris State Univ.</div><div class="ranking-sub">NCAA DII · GLIAC</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num">8</div><div class="ranking-info"><div class="ranking-name">Amherst College</div><div class="ranking-sub">NCAA DIII · NESCAC</div></div><span class="ranking-badge">DIII</span></div>
+            </div>
+          </div>
+
+          <!-- Player Rankings -->
+          <div class="rankings-block fade-up fade-up-delay-1" id="rankPlayers">
+            <div class="rankings-block-header">
+              <div class="rankings-block-title">⭐ Top Players</div>
+              <a href="#" class="rankings-see-all" id="seeAllPlayers">See All</a>
+            </div>
+            <div class="rankings-list">
+              <div class="ranking-item"><div class="ranking-num top-3">1</div><div class="ranking-info"><div class="ranking-name">Marcus Reid</div><div class="ranking-sub">PG · Lincoln JC</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">2</div><div class="ranking-info"><div class="ranking-name">Darnell Brooks</div><div class="ranking-sub">SF · Eckerd</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">3</div><div class="ranking-info"><div class="ranking-name">Antoine Gaines</div><div class="ranking-sub">C · Campbellsville</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num">4</div><div class="ranking-info"><div class="ranking-name">Jalen Torres</div><div class="ranking-sub">G · Trine</div></div><span class="ranking-badge">DIII</span></div>
+              <div class="ranking-item"><div class="ranking-num">5</div><div class="ranking-info"><div class="ranking-name">Devon Price</div><div class="ranking-sub">SG · Bellarmine</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num">6</div><div class="ranking-info"><div class="ranking-name">Chris Monroe</div><div class="ranking-sub">PF · Coffeyville CC</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num">7</div><div class="ranking-info"><div class="ranking-name">Isaiah Wells</div><div class="ranking-sub">PG · OWU</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num">8</div><div class="ranking-info"><div class="ranking-name">Tyler Shaw</div><div class="ranking-sub">G · Williams</div></div><span class="ranking-badge">DIII</span></div>
+            </div>
+          </div>
+
+          <!-- Recruiting Class -->
+          <div class="rankings-block fade-up fade-up-delay-2" id="rankRecruiting">
+            <div class="rankings-block-header">
+              <div class="rankings-block-title">🎯 Top Recruiting Classes</div>
+              <a href="#" class="rankings-see-all" id="seeAllClasses">See All</a>
+            </div>
+            <div class="rankings-list">
+              <div class="ranking-item"><div class="ranking-num top-3">1</div><div class="ranking-info"><div class="ranking-name">Ferris State</div><div class="ranking-sub">NCAA DII · 8 signees</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">2</div><div class="ranking-info"><div class="ranking-name">OWU Basketball</div><div class="ranking-sub">NAIA · 10 signees</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num top-3">3</div><div class="ranking-info"><div class="ranking-name">Tyler JC</div><div class="ranking-sub">JUCO · 14 signees</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num">4</div><div class="ranking-info"><div class="ranking-name">Williams College</div><div class="ranking-sub">DIII · 9 signees</div></div><span class="ranking-badge">DIII</span></div>
+              <div class="ranking-item"><div class="ranking-num">5</div><div class="ranking-info"><div class="ranking-name">Campbellsville</div><div class="ranking-sub">NAIA · 11 signees</div></div><span class="ranking-badge">NAIA</span></div>
+              <div class="ranking-item"><div class="ranking-num">6</div><div class="ranking-info"><div class="ranking-name">Eckerd College</div><div class="ranking-sub">DII · 7 signees</div></div><span class="ranking-badge">DII</span></div>
+              <div class="ranking-item"><div class="ranking-num">7</div><div class="ranking-info"><div class="ranking-name">Coffeyville CC</div><div class="ranking-sub">JUCO · 13 signees</div></div><span class="ranking-badge">JUCO</span></div>
+              <div class="ranking-item"><div class="ranking-num">8</div><div class="ranking-info"><div class="ranking-name">Trine University</div><div class="ranking-sub">DIII · 6 signees</div></div><span class="ranking-badge">DIII</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         VIDEO & PODCAST SECTION
+         ============================================================ -->
+    <section class="media-section" id="podcast" aria-labelledby="podcastSectionTitle">
+      <div class="container">
+        <div class="section-label">Hoop Frens Media</div>
+        <h2 class="section-title" id="podcastSectionTitle" style="margin-bottom:48px;">Podcast &amp; Video</h2>
+
+        <div class="media-inner">
+          <div class="media-left">
+            <div class="media-featured-video" id="featuredVideo" role="button" tabindex="0" aria-label="Play featured podcast episode">
+              <img src="assets/podcast.png" alt="Hoop Frens Podcast studio" />
+              <div class="video-play-btn" aria-hidden="true">▶</div>
+              <div class="video-label">
+                <div class="video-label-tag">🎙 Featured Episode</div>
+                <div class="video-label-title">The Truth About JUCO Recruiting: What No One Tells You</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="media-right">
+            <div class="section-label" style="margin-bottom:20px;">Recent Episodes</div>
+            <div class="episode-list">
+
+              <div class="episode-item" id="episode1" role="button" tabindex="0">
+                <div class="episode-thumb">🎙</div>
+                <div class="episode-info">
+                  <div class="episode-tag">Podcast · Episode 42</div>
+                  <div class="episode-title">Why DII Coaches Are Begging for Good Guards</div>
+                  <div class="episode-dur">⏱ 48 min</div>
+                </div>
+                <div class="episode-play">▶</div>
+              </div>
+
+              <div class="episode-item" id="episode2" role="button" tabindex="0">
+                <div class="episode-thumb">📹</div>
+                <div class="episode-info">
+                  <div class="episode-tag">Interview · Video</div>
+                  <div class="episode-title">Inside the NAIA: A Coach's Perspective on Building Champions</div>
+                  <div class="episode-dur">⏱ 32 min</div>
+                </div>
+                <div class="episode-play">▶</div>
+              </div>
+
+              <div class="episode-item" id="episode3" role="button" tabindex="0">
+                <div class="episode-thumb">🎙</div>
+                <div class="episode-info">
+                  <div class="episode-tag">Podcast · Episode 41</div>
+                  <div class="episode-title">Eligibility Clock Explained: NCAA vs NAIA vs NJCAA</div>
+                  <div class="episode-dur">⏱ 55 min</div>
+                </div>
+                <div class="episode-play">▶</div>
+              </div>
+
+              <div class="episode-item" id="episode4" role="button" tabindex="0">
+                <div class="episode-thumb">📹</div>
+                <div class="episode-info">
+                  <div class="episode-tag">Tips · Recruiting</div>
+                  <div class="episode-title">How to Write a Coach Email That Actually Gets a Response</div>
+                  <div class="episode-dur">⏱ 18 min</div>
+                </div>
+                <div class="episode-play">▶</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         COMMUNITY STATS
+         ============================================================ -->
+    <section class="community-section" id="community" aria-label="Community statistics">
+      <div class="container">
+        <div class="community-inner">
+          <div class="stat-item">
+            <div class="stat-num" data-target="1275" id="statSchools">0</div>
+            <div class="stat-label">Schools Covered</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num" data-target="3400" id="statAthletes">0</div>
+            <div class="stat-label">Athletes Featured</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num" data-target="680" id="statCoaches">0</div>
+            <div class="stat-label">Coaches Interviewed</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num" data-target="2100" id="statArticles">0</div>
+            <div class="stat-label">Articles Published</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         NEWSLETTER SECTION
+         ============================================================ -->
+    <section class="newsletter-section" id="newsletter" aria-labelledby="newsletterTitle">
+      <div class="container">
+        <div class="newsletter-inner">
+          <span class="newsletter-emoji" aria-hidden="true">🏀</span>
+          <div class="section-label">Join the Community</div>
+          <h2 class="section-title" id="newsletterTitle">Stay Connected to Every Level of College Basketball</h2>
+          <p class="section-subtitle" style="margin: 12px auto 0; text-align:center;">
+            Get player spotlights, coach interviews, school features, recruiting education, and the stories that mainstream media skips — straight to your inbox. We Talk Hoops. Everyone's Welcome.
+          </p>
+          <form class="newsletter-form" id="newsletterForm" novalidate aria-label="Newsletter signup form">
+            <div class="form-row">
+              <input type="text" class="form-input" id="inputName" placeholder="Your First Name" autocomplete="given-name" aria-label="First name" required />
+              <input type="email" class="form-input" id="inputEmail" placeholder="Your Email Address" autocomplete="email" aria-label="Email address" required />
+            </div>
+            <button type="submit" class="form-btn" id="newsletterSubmit">Join the Hoop Frens Community 🏀</button>
+            <div class="form-disclaimer">We respect your privacy. Unsubscribe anytime.</div>
+          </form>
+          <div class="form-success" id="formSuccess" role="status" aria-live="polite">
+            <div class="form-success-title">🎉 You're In!</div>
+            <p style="color:var(--gray-light); font-size:0.9rem;">Welcome to the Hoop Frens community. Check your inbox for a welcome message — and get ready for the best non-D1 basketball content on the internet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer class="footer" aria-label="Site footer">
+    <div class="container">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand-name">Hoop<span>Frens</span></div>
+          <p class="footer-brand-desc">
+            The leading media platform for college basketball beyond Division I. Celebrating every pathway, every player, and every program.
+          </p>
+          <div class="footer-social" aria-label="Social media links">
+            <a href="#" class="social-icon" aria-label="Twitter/X">𝕏</a>
+            <a href="#" class="social-icon" aria-label="Instagram">📷</a>
+            <a href="#" class="social-icon" aria-label="YouTube">▶</a>
+            <a href="#" class="social-icon" aria-label="TikTok">♪</a>
+            <a href="#" class="social-icon" aria-label="Spotify">🎙</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Coverage</div>
+          <ul class="footer-links">
+            <li><a href="#divisions">JUCO Basketball</a></li>
+            <li><a href="#divisions">NCAA Division II</a></li>
+            <li><a href="#divisions">NCAA Division III</a></li>
+            <li><a href="#divisions">NAIA</a></li>
+            <li><a href="#divisions">NCCAA</a></li>
+            <li><a href="#divisions">USCAA</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Resources</div>
+          <ul class="footer-links">
+            <li><a href="#recruiting">Recruiting Center</a></li>
+            <li><a href="#rankings">Rankings</a></li>
+            <li><a href="#">Schools Directory</a></li>
+            <li><a href="#">Eligibility Guide</a></li>
+            <li><a href="#">NIL Education</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Company</div>
+          <ul class="footer-links">
+            <li><a href="#">About Hoop Frens</a></li>
+            <li><a href="#">Contact Us</a></li>
+            <li><a href="#">Advertising</a></li>
+            <li><a href="#">Partnerships</a></li>
+            <li><a href="#">Submit a Coach</a></li>
+            <li><a href="#">Nominate a Player</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-copyright">© 2026 HoopFrens.com · All Rights Reserved</div>
+        <div class="footer-tagline">We Talk Hoops. Everyone's Welcome. 🏀</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
