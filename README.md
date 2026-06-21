@@ -57,3 +57,5 @@ npm run build
 - `/nccaa`
 - `/uscaa`
 - `/submit`
+- `/recruiting-resources`
+- `/recruiting-resources/[slug]`

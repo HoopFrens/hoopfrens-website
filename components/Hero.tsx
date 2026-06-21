@@ -10,7 +10,7 @@ export function Hero() {
       <div className="absolute inset-0 bg-[linear-gradient(0deg,#050505_0%,transparent_45%)]" />
       <div className="relative mx-auto w-full max-w-7xl px-5 pb-20 pt-32 lg:px-8 lg:pb-28">
         <div className="max-w-4xl">
-          <p className="eyebrow">We talk hoops. Everyone&apos;s welcome.</p>
+          <p className="eyebrow">Everybody Hoops. Everyone&apos;s Welcome.</p>
           <h1 className="mt-5 text-6xl font-black uppercase leading-[0.87] tracking-[-0.075em] text-white sm:text-8xl lg:text-[8.5rem]">
             Every level.<br /><span className="text-red-500">Every story.</span>
           </h1>
