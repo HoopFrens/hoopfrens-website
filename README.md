@@ -35,7 +35,7 @@ A modern Next.js application for Hoop Frens, the basketball media platform cover
 
 ## Firebase
 
-The homepage newsletter form writes to the `newsletterSubscribers` collection. The `/submit` form writes to `spotlightSubmissions`.
+The homepage community form writes to the `communityMembers` collection. The `/submit` form writes to `spotlightSubmissions`.
 
 Create both collections in Firestore and configure security rules before launch. Public client configuration belongs in `.env.local`; never commit service-account keys or private credentials.
 
@@ -50,6 +50,7 @@ npm run build
 ## Routes
 
 - `/`
+- `/join`
 - `/juco`
 - `/naia`
 - `/d2`

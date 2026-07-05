@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit --project tsconfig.typecheck.json"
   },
   "dependencies": {
     "firebase": "^12.6.0",
