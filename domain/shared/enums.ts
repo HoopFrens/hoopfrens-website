@@ -1,4 +1,6 @@
 export enum ProjectStatus {
+  Draft = "draft",
+  Approved = "approved",
   Planned = "planned",
   Active = "active",
   Paused = "paused",

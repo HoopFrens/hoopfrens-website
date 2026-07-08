@@ -6,6 +6,8 @@ export interface Project {
   workspaceId: EntityId;
   title: string;
   summary?: string;
+  projectType?: string;
+  workspace?: string;
   status: ProjectStatus;
   priority: Priority;
   region?: Region;
@@ -16,6 +18,8 @@ export interface Project {
   assetIds: EntityId[];
   decisionIds: EntityId[];
   sourceIds: EntityId[];
+  completedSoFar?: string[];
+  remainingNextStep?: string;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
