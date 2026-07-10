@@ -1,4 +1,4 @@
-import type { AssetStatus, Scope, VerificationStatus } from "./enums";
+import type { VerificationStatus } from "./enums";
 
 export type EntityId = string;
 export type ISODateString = string;
@@ -27,18 +27,4 @@ export interface Source {
   createdBy: EntityId;
   reliability: VerificationStatus;
   notes?: string;
-}
-
-export interface ProductionPackage {
-  id: EntityId;
-  workspaceId: EntityId;
-  title: string;
-  projectId: EntityId;
-  assetIds: EntityId[];
-  sourceIds: EntityId[];
-  status: AssetStatus;
-  scope: Scope;
-  createdAt: ISODateString;
-  updatedAt: ISODateString;
-  createdBy: EntityId;
 }

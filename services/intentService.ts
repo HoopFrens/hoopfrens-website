@@ -1,4 +1,5 @@
 import { IntentConfidence, type IntentResult, IntentType } from "@/domain/intent";
+import { ProjectType } from "@/domain/project";
 import type { EntityId } from "@/types/workspace";
 import type { ServiceResult } from "./serviceResult";
 
@@ -13,7 +14,20 @@ type StaticIntentRule = {
   targetRoom: IntentResult["targetRoom"];
   recommendedNextAction: string;
   suggestedProjectType?: string;
+  projectTypeFromMatch?: (match: RegExpMatchArray) => string | undefined;
   entityFromMatch?: (match: RegExpMatchArray) => string | undefined;
+};
+
+const projectTypeLabels: Record<string, ProjectType> = {
+  "school spotlight": ProjectType.SchoolSpotlight,
+  "podcast episode": ProjectType.PodcastEpisode,
+  "news story": ProjectType.NewsStory,
+  "recruiting analysis": ProjectType.RecruitingAnalysis,
+  "social video": ProjectType.SocialVideo,
+  "resource guide": ProjectType.ResourceGuide,
+  partnership: ProjectType.Partnership,
+  "website improvement": ProjectType.WebsiteImprovement,
+  merchandise: ProjectType.Merchandise,
 };
 
 const staticIntentRules: StaticIntentRule[] = [
@@ -21,9 +35,17 @@ const staticIntentRules: StaticIntentRule[] = [
     intentType: IntentType.Create,
     pattern: /^spotlight\s+(.+)$/i,
     targetRoom: "production-studio",
-    suggestedProjectType: "spotlight",
+    suggestedProjectType: ProjectType.SchoolSpotlight,
     recommendedNextAction: "Create a new spotlight project draft.",
     entityFromMatch: (match) => match[1],
+  },
+  {
+    intentType: IntentType.Create,
+    pattern: /^create\s+(?:a\s+|an\s+)?(school\s+spotlight|podcast\s+episode|news\s+story|recruiting\s+analysis|social\s+video|resource\s+guide|partnership|website\s+improvement|merchandise)\s+(?:for\s+|about\s+)?(.+)$/i,
+    targetRoom: "production-studio",
+    recommendedNextAction: "Create a new typed project draft.",
+    projectTypeFromMatch: (match) => projectTypeLabels[match[1]?.toLowerCase()],
+    entityFromMatch: (match) => match[2],
   },
   {
     intentType: IntentType.Continue,
@@ -119,7 +141,7 @@ function parseStaticIntent(rawInput: string): IntentResult {
       confidence: IntentConfidence.High,
       targetWorkspace: "executive-workspace",
       targetRoom: rule.targetRoom,
-      suggestedProjectType: rule.suggestedProjectType,
+      suggestedProjectType: rule.projectTypeFromMatch?.(match) || rule.suggestedProjectType,
       relatedEntityName: rule.entityFromMatch?.(match)?.trim(),
       clarificationRequired: false,
       recommendedNextAction: rule.recommendedNextAction,

@@ -1,5 +1,5 @@
 import type { AssetStatus, Scope } from "../shared/enums";
-import type { EntityId, ISODateString, ProductionPackage } from "../shared/types";
+import type { EntityId, ISODateString } from "../shared/types";
 
 export interface Asset {
   id: EntityId;
@@ -17,5 +17,3 @@ export interface Asset {
   updatedAt: ISODateString;
   createdBy: EntityId;
 }
-
-export type { ProductionPackage };

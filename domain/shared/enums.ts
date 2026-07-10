@@ -1,10 +1,11 @@
 export enum ProjectStatus {
   Draft = "draft",
+  Research = "research",
+  Outline = "outline",
+  Production = "production",
+  Review = "review",
   Approved = "approved",
-  Planned = "planned",
-  Active = "active",
-  Paused = "paused",
-  Completed = "completed",
+  Published = "published",
   Archived = "archived",
 }
 

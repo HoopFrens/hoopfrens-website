@@ -1,13 +1,36 @@
 "use client";
 
 import { ExecutionStatus } from "@/domain/execution";
+import {
+  createFirestoreFounderVisitRepository,
+  type DailyBriefAction,
+  type FounderVisitRegistration,
+  type FounderVisitRepository,
+} from "@/domain/briefing";
+import { createFirestoreExecutiveEventRepository, type ExecutiveEvent } from "@/domain/event";
 import { IntentType } from "@/domain/intent";
 import { OrchestrationStatus } from "@/domain/orchestration";
-import { createInMemoryProjectRepository, type Project, type ProjectRepositoryStore } from "@/domain/project";
+import { createFirestoreProjectRepository, type Project, ProjectType, ProjectWorkspace } from "@/domain/project";
 import { Priority, ProjectStatus, Scope } from "@/domain/shared";
-import { auth, isFirebaseConfigured } from "@/lib/firebase";
-import { executionPlanningService, intentService, projectOrchestratorService } from "@/services";
+import { auth, db, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  createInitialProjectStateHistory,
+  executionPlanningService,
+  eventService,
+  founderDailyBriefService,
+  intentService,
+  projectOrchestratorService,
+  projectWorkflowService,
+} from "@/services";
+import { CompanyHealth } from "@/components/executive/CompanyHealth";
+import { ExecutiveRecommendation } from "@/components/executive/ExecutiveRecommendation";
+import { ExecutiveTimeline } from "@/components/executive/ExecutiveTimeline";
+import { FounderDailyBrief } from "@/components/executive/FounderDailyBrief";
+import { NeedsAttention } from "@/components/executive/NeedsAttention";
+import { OpportunitiesRecommendations } from "@/components/executive/OpportunitiesRecommendations";
+import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import {
   Archive,
   Beaker,
@@ -15,25 +38,28 @@ import {
   Building2,
   Clapperboard,
   DoorOpen,
+  FolderKanban,
   Loader2,
   LockKeyhole,
-  Map,
+  Map as MapIcon,
   Mic,
   Send,
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 export type ExecutiveSpaceId =
   | "executive-office"
+  | "projects"
   | "intelligence-center"
   | "production-studio"
   | "strategy-room"
   | "product-lab"
   | "library";
 
-type WorkspaceStatus = "checking" | "authenticated" | "signed-out" | "unconfigured";
+type WorkspaceStatus = "checking" | "checking-role" | "authenticated" | "signed-out" | "unconfigured" | "denied";
 
 type ExecutiveSpace = {
   id: ExecutiveSpaceId;
@@ -46,7 +72,7 @@ type ExecutiveSpace = {
   panels: string[];
 };
 
-type ConversationEntry = {
+export type ConversationEntry = {
   id: string;
   request: string;
   project?: Project;
@@ -56,50 +82,169 @@ type ConversationEntry = {
   createdAt: string;
 };
 
+function restoreConversationHistory(storedHistory: string | null): ConversationEntry[] {
+  if (!storedHistory) return [];
+
+  try {
+    const parsedHistory = JSON.parse(storedHistory);
+    if (!Array.isArray(parsedHistory)) return [];
+
+    const seenProjectBriefs = new Set<string>();
+    return (parsedHistory as ConversationEntry[])
+      .filter((entry) => {
+        if (entry.status !== "success") return false;
+        if (entry.message !== "Project Briefing" || !entry.project) return true;
+
+        if (seenProjectBriefs.has(entry.project.id)) return false;
+        seenProjectBriefs.add(entry.project.id);
+        return true;
+      })
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
+function sortProjectsByUpdate(projects: Project[]) {
+  return [...projects].sort((firstProject, secondProject) => Date.parse(secondProject.updatedAt) - Date.parse(firstProject.updatedAt));
+}
+
 type ConversationView = "headquarters" | "project-detail" | "founder-review" | "founder-approval";
 
 const conversationStorageKey = "hoopfrens.executiveOffice.conversationHistory";
-const projectStorageKey = "hoopfrens.executiveOffice.placeholderProjects";
 const conversationViewStorageKey = "hoopfrens.executiveOffice.conversationView";
 const executiveWorkspaceId = "executive-workspace";
+const isLocalDeveloperPreview = process.env.NODE_ENV === "development";
+const pendingFounderVisitRegistrations = new Map<string, Promise<FounderVisitRegistration>>();
 
-function normalizeSessionProject(project: Project): Project {
+function recordFounderVisit(
+  repository: FounderVisitRepository,
+  userId: string,
+  workspaceId: string,
+  visitedAt: string,
+) {
+  const registrationKey = `${userId}:${workspaceId}`;
+  const pendingRegistration = pendingFounderVisitRegistrations.get(registrationKey);
+  if (pendingRegistration) return pendingRegistration;
+
+  const registration = repository.recordVisit(userId, workspaceId, visitedAt);
+  pendingFounderVisitRegistrations.set(registrationKey, registration);
+  void registration.then(
+    () => pendingFounderVisitRegistrations.delete(registrationKey),
+    () => pendingFounderVisitRegistrations.delete(registrationKey),
+  );
+  return registration;
+}
+
+function normalizeProjectType(projectType: string | undefined): ProjectType {
+  const supportedTypes = Object.values(ProjectType) as string[];
+  return supportedTypes.includes(projectType || "") ? (projectType as ProjectType) : ProjectType.SchoolSpotlight;
+}
+
+function normalizeProjectWorkspace(workspace: ProjectWorkspace | string | undefined): ProjectWorkspace {
+  const workspaceAliases: Record<string, ProjectWorkspace> = {
+    "executive office": ProjectWorkspace.ExecutiveOffice,
+    "executive-office": ProjectWorkspace.ExecutiveOffice,
+    "intelligence center": ProjectWorkspace.IntelligenceCenter,
+    "intelligence-center": ProjectWorkspace.IntelligenceCenter,
+    "production studio": ProjectWorkspace.ProductionStudio,
+    "production-studio": ProjectWorkspace.ProductionStudio,
+    "strategy room": ProjectWorkspace.StrategyRoom,
+    "strategy-room": ProjectWorkspace.StrategyRoom,
+    "product lab": ProjectWorkspace.ProductLab,
+    "product-lab": ProjectWorkspace.ProductLab,
+    library: ProjectWorkspace.Library,
+  };
+
+  return workspaceAliases[(workspace || "").toLowerCase()] || ProjectWorkspace.ExecutiveOffice;
+}
+
+function formatProjectWorkspace(workspace: ProjectWorkspace | string | undefined) {
+  const labels: Record<ProjectWorkspace, string> = {
+    [ProjectWorkspace.ExecutiveOffice]: "Executive Office",
+    [ProjectWorkspace.IntelligenceCenter]: "Intelligence Center",
+    [ProjectWorkspace.ProductionStudio]: "Production Studio",
+    [ProjectWorkspace.StrategyRoom]: "Strategy Room",
+    [ProjectWorkspace.ProductLab]: "Product Lab",
+    [ProjectWorkspace.Library]: "Library",
+  };
+
+  return labels[normalizeProjectWorkspace(workspace)];
+}
+
+function formatProjectType(projectType: ProjectType | string | undefined) {
+  const labels: Record<ProjectType, string> = {
+    [ProjectType.SchoolSpotlight]: "School Spotlight",
+    [ProjectType.PodcastEpisode]: "Podcast Episode",
+    [ProjectType.NewsStory]: "News Story",
+    [ProjectType.RecruitingAnalysis]: "Recruiting Analysis",
+    [ProjectType.SocialVideo]: "Social Video",
+    [ProjectType.ResourceGuide]: "Resource Guide",
+    [ProjectType.Partnership]: "Partnership",
+    [ProjectType.WebsiteImprovement]: "Website Improvement",
+    [ProjectType.Merchandise]: "Merchandise",
+  };
+
+  const normalizedType = normalizeProjectType(projectType);
+  return labels[normalizedType];
+}
+
+function formatProjectStatus(status: ProjectStatus) {
+  if (status === ProjectStatus.Draft) return "Draft";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatProjectPriority(priority: Priority) {
+  return priority.charAt(0).toUpperCase() + priority.slice(1);
+}
+
+function getCurrentStep(project: Project, fallback: string) {
+  return project.currentStep || project.remainingNextStep || fallback;
+}
+
+function formatProjectDate(value: string | undefined) {
+  return value ? new Date(value).toLocaleString() : "Not set";
+}
+
+function normalizeProjectState(project: Project): Project {
+  const currentStep = project.currentStep || project.remainingNextStep || "Research";
+  const projectType = normalizeProjectType(project.type || project.projectType);
+  const projectStatus = project.state || project.status || ProjectStatus.Draft;
+  const currentWorkspace = normalizeProjectWorkspace(project.currentWorkspace || project.workspace);
+  const workspaceHistory = project.workspaceHistory?.length
+    ? project.workspaceHistory
+    : [
+        {
+          workspace: currentWorkspace,
+          enteredAt: project.createdAt || new Date().toISOString(),
+          reason: "Project workspace restored",
+        },
+      ];
+
   return {
     ...project,
-    workspaceId: project.workspaceId || executiveWorkspaceId,
-    status: project.status || ProjectStatus.Draft,
-    priority: project.priority || Priority.Medium,
-    scope: project.scope || Scope.Internal,
-    ownerId: project.ownerId || "founder",
-    contributorIds: project.contributorIds || [],
-    knowledgeEntityIds: project.knowledgeEntityIds || [],
-    assetIds: project.assetIds || [],
-    decisionIds: project.decisionIds || [],
-    sourceIds: project.sourceIds || [],
+    type: projectType,
+    projectType,
+    state: projectStatus,
+    status: projectStatus,
+    currentWorkspace,
+    workspace: formatProjectWorkspace(currentWorkspace),
+    workspaceHistory,
+    progressPercent: project.progressPercent ?? (projectStatus === ProjectStatus.Approved ? 90 : 10),
+    dependencies: project.dependencies || [],
+    currentBlocker: project.currentBlocker || null,
+    currentStep,
+    recommendedNextAction: project.recommendedNextAction || currentStep,
+    lastActivity: project.lastActivity || currentStep,
+    remainingNextStep: project.remainingNextStep || currentStep,
   };
 }
 
-function createSessionProjectStore(storageKey: string): ProjectRepositoryStore {
+function createWorkspaceHistoryEntry(workspace: ProjectWorkspace, reason: string, enteredAt = new Date().toISOString()) {
   return {
-    read() {
-      if (typeof window === "undefined") return [];
-
-      try {
-        const storedProjects = window.sessionStorage.getItem(storageKey);
-        return storedProjects ? (JSON.parse(storedProjects) as Project[]).map(normalizeSessionProject) : [];
-      } catch {
-        return [];
-      }
-    },
-    write(projects) {
-      if (typeof window === "undefined") return;
-
-      try {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(projects.slice(0, 8)));
-      } catch {
-        // Session projects are best-effort only and never persisted outside the browser session.
-      }
-    },
+    workspace,
+    enteredAt,
+    reason,
   };
 }
 
@@ -115,13 +260,23 @@ export const executiveSpaces: ExecutiveSpace[] = [
     panels: ["Today", "Priorities", "Open loops"],
   },
   {
+    id: "projects",
+    label: "Projects",
+    href: "/executive-workspace/projects",
+    eyebrow: "Portfolio",
+    title: "Projects",
+    description: "A cross-workspace view of active Hoop Frens projects, priorities, and next actions.",
+    icon: FolderKanban,
+    panels: ["Projects", "Priorities", "Activity"],
+  },
+  {
     id: "intelligence-center",
     label: "Intelligence Center",
     href: "/executive-workspace/intelligence-center",
     eyebrow: "Research",
     title: "Intelligence Center",
     description: "Placeholder surface for basketball knowledge, source review, and signal gathering.",
-    icon: Map,
+    icon: MapIcon,
     panels: ["Signals", "Sources", "Watchlist"],
   },
   {
@@ -181,21 +336,65 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
   useEffect(() => {
     if (!auth) return;
 
-    return onAuthStateChanged(auth, (nextUser) => {
+    return onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser);
-      setStatus(nextUser ? "authenticated" : "signed-out");
+      if (!nextUser) {
+        setStatus("signed-out");
+        return;
+      }
+
+      if (!isLocalDeveloperPreview) {
+        setStatus("authenticated");
+        return;
+      }
+
+      if (!db) {
+        setStatus("denied");
+        return;
+      }
+
+      setStatus("checking-role");
+      try {
+        const userSnapshot = await getDoc(doc(db, "users", nextUser.uid));
+        setStatus(userSnapshot.exists() && userSnapshot.data().role === "admin" ? "authenticated" : "denied");
+      } catch {
+        setStatus("denied");
+      }
     });
   }, []);
 
   const userLabel = useMemo(() => user?.email || "Approved admin", [user]);
 
-  if (status === "checking") {
+  if (status === "checking" || status === "checking-role") {
     return (
       <WorkspaceFrame>
         <div className="flex h-full items-center justify-center">
           <div className="flex items-center gap-3 border border-white/10 bg-black px-5 py-4 text-sm font-black uppercase text-zinc-300">
             <Loader2 className="animate-spin text-red-500" size={20} />
-            Checking workspace access
+            {status === "checking-role" ? "Checking admin access" : "Checking workspace access"}
+          </div>
+        </div>
+      </WorkspaceFrame>
+    );
+  }
+
+  if (status === "denied") {
+    return (
+      <WorkspaceFrame>
+        <div className="flex h-full items-center justify-center px-5">
+          <div className="w-full max-w-lg border border-white/10 bg-black p-7 shadow-2xl">
+            <ShieldAlert className="text-red-500" size={28} />
+            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">Developer Preview</p>
+            <h1 className="mt-3 text-3xl font-black uppercase text-white">Admin access required</h1>
+            <p className="mt-4 text-sm leading-6 text-zinc-400">
+              Local Executive Workspace preview requires a signed-in Firebase user with an admin role.
+            </p>
+            <Link
+              href="/admin/login"
+              className="mt-6 inline-flex rounded-lg bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-red-500"
+            >
+              Go to admin login
+            </Link>
           </div>
         </div>
       </WorkspaceFrame>
@@ -213,8 +412,8 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
             <p className="mt-4 text-sm leading-6 text-zinc-400">
               Sign in with an approved Hoop Frens admin account to view the Executive Workspace shell.
             </p>
-            <div className="mt-5 border border-yellow-400/30 bg-yellow-400/10 p-4 text-sm font-bold leading-6 text-yellow-100">
-              Auth TODO: reuse the existing admin role check when Firestore access is approved for this workspace.
+            <div className="mt-5 border border-white/10 bg-white/[0.03] p-4 text-sm font-bold leading-6 text-zinc-300">
+              Firebase authentication is required before workspace access is evaluated.
             </div>
             <Link
               href="/admin/login"
@@ -231,7 +430,7 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
   return (
     <WorkspaceFrame>
       <div className="flex h-full flex-col bg-zinc-950 text-white lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-        <aside className="flex shrink-0 flex-col border-b border-white/10 bg-black lg:min-h-0 lg:border-b-0 lg:border-r">
+        <aside className="flex shrink-0 flex-col border-b border-white/10 bg-black lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:border-b-0 lg:border-r">
           <div className="border-b border-white/10 px-4 py-3 lg:px-5 lg:py-5">
             <p className="text-xl font-black uppercase tracking-[-0.04em]">
               Hoop<span className="text-red-500">Frens</span>
@@ -268,14 +467,20 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">{activeSpace.eyebrow}</p>
               <h1 className="text-lg font-black uppercase text-white">{activeSpace.title}</h1>
             </div>
-            <div className="flex items-center gap-2 border border-yellow-400/25 bg-yellow-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-yellow-100">
-              <ShieldAlert size={14} />
-              Auth role TODO
+            <div className="flex items-center gap-2 border border-white/10 bg-black px-3 py-2 text-[10px] font-black uppercase tracking-wider text-zinc-400">
+              <LockKeyhole size={14} className="text-red-500" />
+              Protected Workspace
             </div>
           </header>
 
-          <main className={`min-h-0 flex-1 ${activeSpace.id === "executive-office" ? "overflow-hidden" : "overflow-auto"}`}>
-            {activeSpace.id === "executive-office" ? <ExecutiveOfficeContent /> : <WorkspacePlaceholder activeSpace={activeSpace} />}
+          <main className="min-h-0 flex-1 overflow-auto">
+            {activeSpace.id === "executive-office" ? (
+              <ExecutiveOfficeContent currentUserId={user?.uid || "founder"} />
+            ) : activeSpace.id === "projects" ? (
+              <ProjectsWorkspace currentUserId={user?.uid || "founder"} currentUserLabel={userLabel} />
+            ) : (
+              <WorkspacePlaceholder activeSpace={activeSpace} />
+            )}
           </main>
         </section>
       </div>
@@ -283,9 +488,25 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
   );
 }
 
-function ExecutiveOfficeContent() {
+function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
+  const router = useRouter();
   const [conversationInput, setConversationInput] = useState("");
-  const projectRepository = useMemo(() => createInMemoryProjectRepository(createSessionProjectStore(projectStorageKey)), []);
+  const [sessionProjects, setSessionProjects] = useState<Project[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<ExecutiveEvent[]>([]);
+  const [projectLoadError, setProjectLoadError] = useState("");
+  const [timelineLoadError, setTimelineLoadError] = useState("");
+  const projectRepository = useMemo(
+    () => (db ? createFirestoreProjectRepository(db, currentUserId) : null),
+    [currentUserId],
+  );
+  const eventRepository = useMemo(() => (db ? createFirestoreExecutiveEventRepository(db) : null), []);
+  const founderVisitRepository = useMemo(() => (db ? createFirestoreFounderVisitRepository(db) : null), []);
+  const [projectsLoading, setProjectsLoading] = useState(Boolean(projectRepository));
+  const [timelineLoading, setTimelineLoading] = useState(Boolean(eventRepository));
+  const [lastVisitAt, setLastVisitAt] = useState<string | null>(null);
+  const [visitLoading, setVisitLoading] = useState(Boolean(founderVisitRepository));
+  const [visitError, setVisitError] = useState("");
+  const [briefGeneratedAt] = useState(() => new Date());
   const [conversationView, setConversationView] = useState<ConversationView>(() => {
     if (typeof window === "undefined") return "headquarters";
 
@@ -295,28 +516,9 @@ function ExecutiveOfficeContent() {
   const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>(() => {
     if (typeof window === "undefined") return [];
 
-    try {
-      const storedHistory = window.sessionStorage.getItem(conversationStorageKey);
-      return storedHistory ? (JSON.parse(storedHistory) as ConversationEntry[]) : [];
-    } catch {
-      return [];
-    }
+    return restoreConversationHistory(window.sessionStorage.getItem(conversationStorageKey));
   });
   const [conversationError, setConversationError] = useState("");
-
-  const intelligenceItems = [
-    "Release 0 foundation is committed locally and waiting on executive review.",
-    "The workspace shell remains internal, protected, and placeholder-only.",
-    "Business objects are separated into domain folders for future implementation.",
-    "Admin role enforcement is marked until Firestore access is approved.",
-    "AI, voice, and workflow automation are intentionally inactive.",
-  ];
-
-  const focusItems = [
-    "Approve the headquarters visual direction.",
-    "Confirm the internal workspace route structure.",
-    "Select the next architecture slice.",
-  ];
 
   useEffect(() => {
     try {
@@ -334,24 +536,116 @@ function ExecutiveOfficeContent() {
     }
   }, [conversationView]);
 
+  useEffect(() => {
+    if (!projectRepository) return;
+
+    const repository = projectRepository;
+    let active = true;
+
+    async function loadProjects() {
+      let normalizedProjects: Project[] = [];
+      try {
+        setProjectLoadError("");
+        const projects = await repository.listByWorkspace(executiveWorkspaceId);
+        normalizedProjects = sortProjectsByUpdate(projects.map(normalizeProjectState));
+        if (active) setSessionProjects(normalizedProjects);
+      } catch {
+        if (active) setProjectLoadError("Headquarters could not load saved projects.");
+      } finally {
+        if (active) setProjectsLoading(false);
+      }
+
+      if (!eventRepository) return;
+      try {
+        setTimelineLoadError("");
+        const existingEvents = await eventService.listByWorkspace(eventRepository, executiveWorkspaceId);
+        const synchronizedEvents = await eventService.synchronizeProjectHistory(
+          eventRepository,
+          normalizedProjects,
+          existingEvents,
+        );
+        if (active) setTimelineEvents(synchronizedEvents);
+      } catch {
+        if (active) setTimelineLoadError("Headquarters could not load the Executive Intelligence timeline.");
+      } finally {
+        if (active) setTimelineLoading(false);
+      }
+    }
+
+    void loadProjects();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, eventRepository, projectRepository]);
+
+  useEffect(() => {
+    if (!founderVisitRepository) return;
+
+    const repository = founderVisitRepository;
+    let active = true;
+
+    async function recordVisit() {
+      try {
+        setVisitError("");
+        const registration = await recordFounderVisit(repository, currentUserId, executiveWorkspaceId, new Date().toISOString());
+        if (active) setLastVisitAt(registration.previousVisitAt);
+      } catch {
+        if (active) setVisitError("Headquarters could not load your previous visit.");
+      } finally {
+        if (active) setVisitLoading(false);
+      }
+    }
+
+    void recordVisit();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, founderVisitRepository]);
+
   function createProjectTitle(entityName: string | undefined, projectType: string | undefined) {
     const subject = entityName?.trim() || "Untitled";
-    if (projectType === "spotlight") return `${subject} School Spotlight`;
-    return subject;
+    const normalizedType = normalizeProjectType(projectType);
+    if (normalizedType === ProjectType.SchoolSpotlight) return `${subject} School Spotlight`;
+    return `${subject} ${formatProjectType(normalizedType)}`;
   }
 
   function normalizeProjectMatch(value: string) {
     return value.toLowerCase().replace(/school spotlight/g, "").replace(/university/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   }
 
-  function formatProjectStatus(status: ProjectStatus) {
-    if (status === ProjectStatus.Draft) return "Draft";
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  function requireProjectRepository() {
+    if (!projectRepository) {
+      throw new Error("Project repository is unavailable.");
+    }
+
+    return projectRepository;
   }
 
   async function listSessionProjects() {
+    if (!projectRepository) return [];
+
     const projects = await projectRepository.listByWorkspace(executiveWorkspaceId);
-    return projects.sort((firstProject, secondProject) => Date.parse(secondProject.updatedAt) - Date.parse(firstProject.updatedAt));
+    return sortProjectsByUpdate(projects.map(normalizeProjectState));
+  }
+
+  async function listTimelineEvents(projects: Project[]) {
+    if (!eventRepository) return [];
+
+    const existingEvents = await eventService.listByWorkspace(eventRepository, executiveWorkspaceId);
+    return eventService.synchronizeProjectHistory(eventRepository, projects, existingEvents);
+  }
+
+  async function refreshSessionProjects() {
+    const projects = await listSessionProjects();
+    setSessionProjects(projects);
+    try {
+      setTimelineLoadError("");
+      setTimelineEvents(await listTimelineEvents(projects));
+    } catch {
+      setTimelineLoadError("Headquarters could not refresh the Executive Intelligence timeline.");
+    }
   }
 
   async function findContinuationProject(entityName: string | undefined) {
@@ -360,7 +654,7 @@ function ExecutiveOfficeContent() {
     if (!entityName) return projects.length === 1 ? projects[0] : null;
 
     const searchValue = normalizeProjectMatch(entityName);
-    return projects.find((project) => normalizeProjectMatch(project.title).includes(searchValue)) || null;
+    return projects.find((project) => normalizeProjectMatch(project.title).includes(searchValue)) || (projects.length === 1 ? projects[0] : null);
   }
 
   function createClarificationEntry(request: string, question: string): ConversationEntry {
@@ -375,9 +669,7 @@ function ExecutiveOfficeContent() {
   }
 
   async function createProjectBriefingEntry(request: string, project: Project): Promise<ConversationEntry> {
-    const updatedProject = await projectRepository.update(project.id, {
-      updatedAt: new Date().toISOString(),
-    });
+    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "continue"));
 
     return {
       id: `conversation_${Date.now()}`,
@@ -385,7 +677,7 @@ function ExecutiveOfficeContent() {
       project: updatedProject,
       status: "success",
       message: "Project Briefing",
-      nextStep: "Begin the research pass for the school spotlight.",
+      nextStep: updatedProject.recommendedNextAction,
       createdAt: new Date().toISOString(),
     };
   }
@@ -397,55 +689,101 @@ function ExecutiveOfficeContent() {
   function updateLatestProject(updatedProject: Project, message: string, nextStep: string) {
     setConversationHistory((currentHistory) => {
       const [latestConversationEntry, ...remainingHistory] = currentHistory;
-      if (!latestConversationEntry) return currentHistory;
+      const updatedEntry: ConversationEntry = {
+        id: latestConversationEntry?.project?.id === updatedProject.id ? latestConversationEntry.id : `conversation_${Date.now()}`,
+        request: latestConversationEntry?.project?.id === updatedProject.id ? latestConversationEntry.request : message,
+        project: updatedProject,
+        status: "success",
+        message,
+        nextStep,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (!latestConversationEntry || latestConversationEntry.project?.id !== updatedProject.id) {
+        return [updatedEntry, ...currentHistory].slice(0, 6);
+      }
 
       return [
-        {
-          ...latestConversationEntry,
-          project: updatedProject,
-          message,
-          nextStep,
-          createdAt: new Date().toISOString(),
-        },
+        updatedEntry,
         ...remainingHistory,
       ].slice(0, 6);
     });
   }
 
+  function createConversationTimeline(entry: ConversationEntry) {
+    if (entry.message === "Project Briefing") {
+      return [
+        { speaker: "Founder", text: "Continue Project" },
+        { speaker: "Headquarters", text: "Opening Project Brief..." },
+      ];
+    }
+
+    if (entry.project) {
+      return [
+        { speaker: "Headquarters", text: "Project created." },
+        { speaker: "Headquarters", text: `Recommendation: Begin ${entry.nextStep.toLowerCase()}.` },
+      ];
+    }
+
+    if (entry.status === "blocked") {
+      return [
+        { speaker: "Founder", text: entry.request },
+        { speaker: "Headquarters", text: entry.nextStep },
+      ];
+    }
+
+    return [];
+  }
+
+  async function handleContinueProject(project: Project | undefined) {
+    try {
+      setConversationError("");
+      const projectToContinue = project || (await findContinuationProject(undefined));
+
+      if (!projectToContinue) {
+        const sessionProjects = await listSessionProjects();
+        const question =
+          sessionProjects.length > 1 ? "Which project should Headquarters continue?" : "Create a project before continuing.";
+        setConversationHistory((currentHistory) => [createClarificationEntry("Continue Project", question), ...currentHistory].slice(0, 6));
+        setConversationView("headquarters");
+        return;
+      }
+
+      const briefingEntry = await createProjectBriefingEntry("Continue Project", projectToContinue);
+      await refreshSessionProjects();
+      setConversationHistory((currentHistory) => [briefingEntry, ...currentHistory].slice(0, 6));
+      setConversationView("headquarters");
+    } catch {
+      setConversationError("Headquarters could not continue the project in this session.");
+    }
+  }
+
   async function handleRevisionRequest(project: Project) {
-    const revisionNote = "Founder revision requested";
-    const completedSoFar = project.completedSoFar?.includes(revisionNote)
-      ? project.completedSoFar
-      : [...(project.completedSoFar || []), revisionNote];
-    const updatedProject = await projectRepository.update(project.id, {
-      status: ProjectStatus.Draft,
-      updatedAt: new Date().toISOString(),
-      completedSoFar,
-      remainingNextStep: "Revise project brief",
-    });
+    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "request-revision"));
 
     updateLatestProject(updatedProject, "Project Briefing", "Revise project brief");
+    await refreshSessionProjects();
     setConversationView("headquarters");
   }
 
   function handleFounderApproval(project: Project) {
-    updateLatestProject(project, "Founder Approval", "Approval placeholder");
+    updateLatestProject(project, "Founder Approval", "Confirm Founder approval");
     setConversationView("founder-approval");
   }
 
+  async function handleProjectReview(project: Project) {
+    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "review"));
+
+    updateLatestProject(updatedProject, "Founder Review", "Review the package and choose approval, revision, or return.");
+    await refreshSessionProjects();
+    setConversationView("founder-review");
+  }
+
   async function handleConfirmApproval(project: Project) {
-    const approvalNote = "Founder approval complete";
-    const completedSoFar = project.completedSoFar?.includes(approvalNote)
-      ? project.completedSoFar
-      : [...(project.completedSoFar || []), approvalNote];
-    const updatedProject = await projectRepository.update(project.id, {
-      status: ProjectStatus.Approved,
-      updatedAt: new Date().toISOString(),
-      completedSoFar,
-      remainingNextStep: "Prepare next approved step",
-    });
+    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "approve"));
 
     updateLatestProject(updatedProject, "Founder Approval Complete", "Prepare next approved step");
+    await refreshSessionProjects();
     setConversationView("headquarters");
   }
 
@@ -508,16 +846,29 @@ function ExecutiveOfficeContent() {
     }
 
     const now = new Date().toISOString();
-    const project = await projectRepository.create({
+    const projectType = normalizeProjectType(executionPlan.data.projectType);
+    const currentWorkspace = ProjectWorkspace.IntelligenceCenter;
+    const project = await requireProjectRepository().create({
       id: `project_${Date.now()}`,
       workspaceId: executiveWorkspaceId,
-      title: createProjectTitle(intentResult.data.relatedEntityName, executionPlan.data.projectType),
-      projectType: executionPlan.data.projectType || executionPlan.data.planType,
-      workspace: "Production Studio",
+      title: createProjectTitle(intentResult.data.relatedEntityName, projectType),
+      type: projectType,
+      projectType,
+      currentWorkspace,
+      workspace: formatProjectWorkspace(currentWorkspace),
+      workspaceHistory: [
+        createWorkspaceHistoryEntry(ProjectWorkspace.ExecutiveOffice, "Founder created project", now),
+        createWorkspaceHistoryEntry(ProjectWorkspace.IntelligenceCenter, "Research queued", now),
+      ],
+      stateHistory: createInitialProjectStateHistory(now),
+      state: ProjectStatus.Draft,
       status: ProjectStatus.Draft,
+      progressPercent: 10,
       priority: executionPlan.data.priority || Priority.Medium,
       scope: Scope.Internal,
-      ownerId: "founder",
+      ownerId: currentUserId,
+      dependencies: [],
+      currentBlocker: null,
       contributorIds: [],
       knowledgeEntityIds: [],
       assetIds: [],
@@ -526,7 +877,10 @@ function ExecutiveOfficeContent() {
       createdAt: now,
       updatedAt: now,
       completedSoFar: ["Intent classified", "Execution plan created", "Project orchestration queued"],
+      currentStep: "Research",
       remainingNextStep: "Research",
+      recommendedNextAction: "Begin research",
+      lastActivity: "Project created",
     });
 
     return {
@@ -534,7 +888,7 @@ function ExecutiveOfficeContent() {
       request,
       project,
       status: "success",
-      message: "Project Created",
+      message: "Headquarters",
       nextStep: "Research",
       createdAt: new Date().toISOString(),
     };
@@ -551,6 +905,7 @@ function ExecutiveOfficeContent() {
     setConversationError("");
     try {
       const response = await createWorkflowResponse(request);
+      await refreshSessionProjects();
       setConversationHistory((currentHistory) => [response, ...currentHistory].slice(0, 6));
       setConversationView("headquarters");
       setConversationInput("");
@@ -559,100 +914,179 @@ function ExecutiveOfficeContent() {
     }
   }
 
+  function focusExecutiveConversation() {
+    window.requestAnimationFrame(() => {
+      document.getElementById("executive-conversation")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  async function handleDailyBriefAction(action: DailyBriefAction) {
+    setConversationError("");
+    try {
+      if (action.type === "continue") {
+        await handleContinueProject(action.project);
+        focusExecutiveConversation();
+        return;
+      }
+
+      if (action.type === "review") {
+        await handleProjectReview(action.project);
+        focusExecutiveConversation();
+        return;
+      }
+
+      if (action.type === "approve") {
+        handleFounderApproval(action.project);
+        focusExecutiveConversation();
+        return;
+      }
+
+      const projectQuery = `projectId=${encodeURIComponent(action.project.id)}`;
+      const viewQuery = action.type === "open-research-package" ? "&view=research-package" : "";
+      router.push(`/executive-workspace/projects?${projectQuery}${viewQuery}`);
+    } catch {
+      setConversationError("Headquarters could not open the recommended action.");
+      focusExecutiveConversation();
+    }
+  }
+
+  const dailyBrief = useMemo(
+    () => founderDailyBriefService.generate(sessionProjects, timelineEvents, lastVisitAt, briefGeneratedAt, currentUserId),
+    [briefGeneratedAt, currentUserId, lastVisitAt, sessionProjects, timelineEvents],
+  );
   const latestEntry = conversationHistory[0];
   const latestProject = latestEntry?.project;
+  const conversationTimeline = latestEntry ? createConversationTimeline(latestEntry) : [];
+  const suggestedPrompts = ["Spotlight Ashland University", "Continue current project", "Review pending projects"];
 
   return (
-    <div className="h-full overflow-auto bg-[#050505] px-4 py-4 text-white sm:px-6 sm:py-5 xl:overflow-hidden">
-      <div className="mx-auto grid h-full max-w-7xl gap-4 xl:grid-rows-[86px_minmax(0,1fr)]">
-        <section className="flex items-center justify-between gap-5 border-b border-white/10 pb-4">
+    <div className="min-h-full bg-[#050505] px-4 py-4 text-white sm:px-5 sm:py-4 xl:min-h-0">
+      <div className="mx-auto grid min-h-full max-w-[1500px] gap-4 xl:min-h-0">
+        <section className="flex items-center border-b border-white/10 pb-3">
           <div className="min-w-0">
-            <p className="text-2xl font-black uppercase tracking-normal text-white sm:text-3xl">
+            <p className="text-xl font-black uppercase tracking-normal text-white sm:text-2xl">
               Hoop<span className="text-red-500">Frens</span>
             </p>
             <p className="mt-1 text-[11px] font-black uppercase tracking-[0.3em] text-zinc-500">Headquarters</p>
           </div>
-          <div className="hidden max-w-sm border-l border-red-600/70 pl-5 text-right md:block">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Company Status</p>
-            <p className="mt-2 text-sm font-black text-white">Everything is operating normally.</p>
-          </div>
         </section>
 
-        <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-          <div className="grid min-h-0 gap-4 xl:grid-rows-[minmax(150px,0.65fr)_minmax(0,1.35fr)]">
-            <section className="border border-white/10 bg-[#101010] p-5 shadow-2xl shadow-black/35 sm:p-6">
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-zinc-500">Good morning, Antwone.</p>
-              <h1 className="mt-4 max-w-3xl text-4xl font-black uppercase leading-[0.95] tracking-normal text-white sm:text-5xl xl:text-6xl">
-                Headquarters is steady.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm font-bold leading-6 text-zinc-400">
-                The office is clear, quiet, and ready for the next executive call.
+        <FounderDailyBrief
+          brief={dailyBrief}
+          loading={projectsLoading || timelineLoading || visitLoading}
+          error={
+            projectLoadError ||
+            timelineLoadError ||
+            visitError ||
+            (!projectRepository || !eventRepository || !founderVisitRepository ? "Persistent Headquarters data is unavailable." : "")
+          }
+        />
+
+        <ExecutiveRecommendation
+          recommendation={dailyBrief.todaysRecommendation}
+          action={dailyBrief.recommendedFirstAction}
+          onAction={(action) => void handleDailyBriefAction(action)}
+        />
+
+        <CompanyHealth items={dailyBrief.companyHealth} />
+
+        <NeedsAttention items={dailyBrief.needsAttention} totalCount={dailyBrief.needsAttentionCount} />
+
+        <OpportunitiesRecommendations items={dailyBrief.opportunitiesAndRecommendations} />
+
+        <section
+          id="executive-conversation"
+          className="flex min-h-[560px] max-h-[760px] flex-col scroll-mt-4 border border-white/10 bg-[#0f0f0f] shadow-2xl shadow-black/30 ring-1 ring-red-500/10"
+        >
+            <div className="shrink-0 border-b border-white/10 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">Executive Conversation</p>
+              <p className="mt-2 text-sm font-bold leading-6 text-zinc-400">
+                Ready for your next direction.
               </p>
-            </section>
-
-            <section className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <article className="min-h-0 border border-white/10 bg-[#111111] p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-5">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">What should leadership know?</p>
-                    <h2 className="mt-2 text-sm font-black uppercase tracking-[0.16em] text-red-500">Executive Intelligence</h2>
-                  </div>
-                  <span className="border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Placeholder</span>
-                </div>
-                <div className="mt-5 grid gap-2 xl:gap-2.5">
-                  {intelligenceItems.map((item, index) => (
-                    <div key={item} className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-t border-white/10 pt-2.5 first:border-t-0 first:pt-0">
-                      <p className="text-xs font-black text-zinc-600">{String(index + 1).padStart(2, "0")}</p>
-                      <p className="text-sm font-bold leading-5 text-zinc-200">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="min-h-0 border border-white/10 bg-[#151515] p-5 sm:p-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">What matters today?</p>
-                <h2 className="mt-2 text-sm font-black uppercase tracking-[0.16em] text-red-500">Today&apos;s Focus</h2>
-                <div className="mt-6 grid gap-4">
-                  {focusItems.map((item, index) => (
-                    <div key={item} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3">
-                      <div className="flex size-8 items-center justify-center border border-white/15 text-xs font-black text-white">{index + 1}</div>
-                      <p className="text-base font-black leading-6 text-white">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </section>
-          </div>
-
-          <section className="flex min-h-0 flex-col border border-white/10 bg-[#0f0f0f] shadow-2xl shadow-black/30">
-            <div className="border-b border-white/10 p-5 sm:p-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">What should Hoop Frens do next?</p>
-              <h2 className="mt-4 text-3xl font-black uppercase leading-tight tracking-normal text-white sm:text-4xl xl:text-5xl">
-                What would you like Hoop Frens to accomplish today?
-              </h2>
             </div>
 
-            <div className="min-h-0 flex-1 px-5 pt-5 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-10 sm:px-5">
+              {projectLoadError ? (
+                <div className="mb-4 border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold leading-6 text-red-100">
+                  {projectLoadError}
+                </div>
+              ) : null}
+
               {conversationView === "project-detail" && latestProject ? (
-                <article className="border border-white/10 bg-black p-5">
+                <article className="border border-white/10 bg-black p-4 sm:p-5">
                   <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">Project Detail</p>
-                  <h3 className="mt-3 text-2xl font-black uppercase leading-tight text-white">{latestProject.title}</h3>
+                  <h3 className="mt-3 text-xl font-black uppercase leading-tight text-white sm:text-2xl">{latestProject.title}</h3>
                   <div className="mt-5 grid gap-3 text-sm">
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Type</p>
+                      <p className="font-bold text-white">{formatProjectType(latestProject.projectType)}</p>
+                    </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <p className="font-black uppercase tracking-wider text-zinc-600">Status</p>
                       <p className="font-bold text-white">{formatProjectStatus(latestProject.status)}</p>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
-                      <p className="font-black uppercase tracking-wider text-zinc-600">Workspace</p>
-                      <p className="font-bold text-white">{latestProject.workspace || "Production Studio"}</p>
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Progress</p>
+                      <p className="font-bold text-white">{latestProject.progressPercent}%</p>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
-                      <p className="font-black uppercase tracking-wider text-zinc-600">Next Step</p>
-                      <p className="font-bold text-white">{latestProject.remainingNextStep || latestEntry.nextStep}</p>
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Priority</p>
+                      <p className="font-bold text-white">{formatProjectPriority(latestProject.priority)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Owner</p>
+                      <p className="font-bold text-white">{latestProject.ownerId}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Current Workspace</p>
+                      <p className="font-bold text-white">{formatProjectWorkspace(latestProject.currentWorkspace)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Created</p>
+                      <p className="font-bold text-white">{formatProjectDate(latestProject.createdAt)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Updated</p>
+                      <p className="font-bold text-white">{formatProjectDate(latestProject.updatedAt)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Due Date</p>
+                      <p className="font-bold text-white">{formatProjectDate(latestProject.dueDate)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Dependencies</p>
+                      <p className="font-bold text-white">{latestProject.dependencies.length ? latestProject.dependencies.join(", ") : "None"}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Blocker</p>
+                      <p className="font-bold text-white">{latestProject.currentBlocker || "None"}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Current Step</p>
+                      <p className="font-bold text-white">{getCurrentStep(latestProject, latestEntry.nextStep)}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Recommended</p>
+                      <p className="font-bold text-white">{latestProject.recommendedNextAction}</p>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <p className="font-black uppercase tracking-wider text-zinc-600">Last Activity</p>
+                      <p className="font-bold text-white">{latestProject.lastActivity}</p>
+                    </div>
+                  </div>
+                  <div className="mt-5 border-t border-white/10 pt-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-600">Workspace History</p>
+                    <div className="mt-3 grid gap-2">
+                      {latestProject.workspaceHistory.map((entry, index) => (
+                        <div key={`${entry.workspace}-${entry.enteredAt}-${index}`} className="grid grid-cols-[132px_minmax(0,1fr)] gap-3 text-sm">
+                          <p className="font-black text-white">{formatProjectWorkspace(entry.workspace)}</p>
+                          <p className="font-bold leading-5 text-zinc-400">{entry.reason}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <p className="mt-5 text-sm font-bold leading-6 text-zinc-400">
-                    Placeholder project detail. Research, assets, decisions, and production work remain inactive until later approved slices.
+                    This brief reflects the project&apos;s latest saved state and activity.
                   </p>
                   <button
                     type="button"
@@ -663,21 +1097,29 @@ function ExecutiveOfficeContent() {
                   </button>
                 </article>
               ) : conversationView === "founder-review" && latestProject ? (
-                <article className="border border-white/10 bg-black p-5">
+                <article className="border border-white/10 bg-black p-4 sm:p-5">
                   <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">Founder Review</p>
-                  <h3 className="mt-3 text-2xl font-black uppercase leading-tight text-white">Review Package</h3>
+                  <h3 className="mt-3 text-xl font-black uppercase leading-tight text-white sm:text-2xl">Review Package</h3>
                   <dl className="mt-5 grid gap-3 text-sm">
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Project Name</dt>
                       <dd className="font-bold text-white">{latestProject.title}</dd>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Type</dt>
+                      <dd className="font-bold text-white">{formatProjectType(latestProject.projectType)}</dd>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Status</dt>
                       <dd className="font-bold text-white">{formatProjectStatus(latestProject.status)}</dd>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
-                      <dt className="font-black uppercase tracking-wider text-zinc-600">Workspace</dt>
-                      <dd className="font-bold text-white">{latestProject.workspace || "Production Studio"}</dd>
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Progress</dt>
+                      <dd className="font-bold text-white">{latestProject.progressPercent}%</dd>
+                    </div>
+                    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Current Workspace</dt>
+                      <dd className="font-bold text-white">{formatProjectWorkspace(latestProject.currentWorkspace)}</dd>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Deliverables</dt>
@@ -685,11 +1127,11 @@ function ExecutiveOfficeContent() {
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Current Step</dt>
-                      <dd className="font-bold text-white">{latestProject.remainingNextStep || latestEntry.nextStep}</dd>
+                      <dd className="font-bold text-white">{getCurrentStep(latestProject, latestEntry.nextStep)}</dd>
                     </div>
                     <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Next Action</dt>
-                      <dd className="font-bold text-white">Review the package and choose approval, revision, or return.</dd>
+                      <dd className="font-bold text-white">{latestProject.recommendedNextAction}</dd>
                     </div>
                   </dl>
                   <div className="mt-5 grid gap-2 border-t border-white/10 pt-4">
@@ -717,21 +1159,29 @@ function ExecutiveOfficeContent() {
                   </div>
                 </article>
               ) : conversationView === "founder-approval" && latestProject ? (
-                <article className="border border-white/10 bg-black p-5">
+                <article className="border border-white/10 bg-black p-4 sm:p-5">
                   <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">Founder Approval</p>
-                  <h3 className="mt-3 text-2xl font-black uppercase leading-tight text-white">Approval Summary</h3>
+                  <h3 className="mt-3 text-xl font-black uppercase leading-tight text-white sm:text-2xl">Approval Summary</h3>
                   <dl className="mt-5 grid gap-3 text-sm">
                     <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Project Name</dt>
                       <dd className="font-bold text-white">{latestProject.title}</dd>
                     </div>
                     <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Type</dt>
+                      <dd className="font-bold text-white">{formatProjectType(latestProject.projectType)}</dd>
+                    </div>
+                    <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Status</dt>
                       <dd className="font-bold text-white">{formatProjectStatus(latestProject.status)}</dd>
                     </div>
                     <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
-                      <dt className="font-black uppercase tracking-wider text-zinc-600">Workspace</dt>
-                      <dd className="font-bold text-white">{latestProject.workspace || "Production Studio"}</dd>
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Progress</dt>
+                      <dd className="font-bold text-white">{latestProject.progressPercent}%</dd>
+                    </div>
+                    <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                      <dt className="font-black uppercase tracking-wider text-zinc-600">Current Workspace</dt>
+                      <dd className="font-bold text-white">{formatProjectWorkspace(latestProject.currentWorkspace)}</dd>
                     </div>
                     <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Deliverables</dt>
@@ -743,7 +1193,7 @@ function ExecutiveOfficeContent() {
                     </div>
                     <div className="grid grid-cols-[118px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                       <dt className="font-black uppercase tracking-wider text-zinc-600">Next Step</dt>
-                      <dd className="font-bold text-white">Return to Headquarters with approved project status.</dd>
+                      <dd className="font-bold text-white">{latestProject.recommendedNextAction}</dd>
                     </div>
                   </dl>
                   <div className="mt-5 grid gap-2 border-t border-white/10 pt-4">
@@ -771,19 +1221,60 @@ function ExecutiveOfficeContent() {
                   </div>
                 </article>
               ) : latestEntry ? (
-                <article className="border border-white/10 bg-black p-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">{latestEntry.message}</p>
+                <article className="border border-white/10 bg-black p-4 sm:p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">
+                    {latestEntry.project ? "Headquarters" : latestEntry.message}
+                  </p>
                   {latestEntry.project ? (
                     <>
-                      <h3 className="mt-3 text-2xl font-black uppercase leading-tight text-white">{latestEntry.project.title}</h3>
+                      <h3 className="mt-3 text-xl font-black uppercase leading-tight text-white sm:text-2xl">
+                        {latestEntry.message === "Project Briefing"
+                          ? "Opening Project Brief..."
+                          : `I've created the ${latestEntry.project.title} project.`}
+                      </h3>
+                      <p className="mt-4 text-sm font-bold leading-6 text-zinc-300">
+                        My recommendation is to begin {latestEntry.nextStep.toLowerCase()}.
+                      </p>
+                      <div className="mt-4 border-t border-white/10 pt-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-600">Reason</p>
+                        <p className="mt-2 text-sm font-bold leading-6 text-white">Research has not yet been completed.</p>
+                      </div>
                       <dl className="mt-5 grid gap-3 text-sm">
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Type</dt>
+                          <dd className="font-bold text-white">{formatProjectType(latestEntry.project.projectType)}</dd>
+                        </div>
                         <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                           <dt className="font-black uppercase tracking-wider text-zinc-600">Status</dt>
                           <dd className="font-bold text-white">{formatProjectStatus(latestEntry.project.status)}</dd>
                         </div>
                         <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Progress</dt>
+                          <dd className="font-bold text-white">{latestEntry.project.progressPercent}%</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Priority</dt>
+                          <dd className="font-bold text-white">{formatProjectPriority(latestEntry.project.priority)}</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Owner</dt>
+                          <dd className="font-bold text-white">{latestEntry.project.ownerId}</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                           <dt className="font-black uppercase tracking-wider text-zinc-600">Workspace</dt>
-                          <dd className="font-bold text-white">{latestEntry.project.workspace || "Production Studio"}</dd>
+                          <dd className="font-bold text-white">{formatProjectWorkspace(latestEntry.project.currentWorkspace)}</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Due Date</dt>
+                          <dd className="font-bold text-white">{formatProjectDate(latestEntry.project.dueDate)}</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Depends On</dt>
+                          <dd className="font-bold text-white">{latestEntry.project.dependencies.length ? latestEntry.project.dependencies.join(", ") : "None"}</dd>
+                        </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Blocker</dt>
+                          <dd className="font-bold text-white">{latestEntry.project.currentBlocker || "None"}</dd>
                         </div>
                         {latestEntry.message === "Project Briefing" ? (
                           <>
@@ -795,28 +1286,54 @@ function ExecutiveOfficeContent() {
                               <dt className="font-black uppercase tracking-wider text-zinc-600">Completed</dt>
                               <dd className="font-bold text-white">{latestEntry.project.completedSoFar?.join(", ") || "Project context restored"}</dd>
                             </div>
+                            <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                              <dt className="font-black uppercase tracking-wider text-zinc-600">Recommended</dt>
+                              <dd className="font-bold text-white">{latestEntry.project.recommendedNextAction || latestEntry.nextStep}</dd>
+                            </div>
                           </>
                         ) : null}
                         <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
                           <dt className="font-black uppercase tracking-wider text-zinc-600">{latestEntry.message === "Project Briefing" ? "Remaining" : "Next Step"}</dt>
                           <dd className="font-bold text-white">
-                            {latestEntry.message === "Project Briefing" ? latestEntry.project.remainingNextStep || latestEntry.nextStep : latestEntry.nextStep}
+                            {latestEntry.message === "Project Briefing" ? getCurrentStep(latestEntry.project, latestEntry.nextStep) : latestEntry.nextStep}
                           </dd>
                         </div>
+                        <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-t border-white/10 pt-3">
+                          <dt className="font-black uppercase tracking-wider text-zinc-600">Activity</dt>
+                          <dd className="font-bold text-white">{latestEntry.project.lastActivity}</dd>
+                        </div>
                       </dl>
+                      {conversationTimeline.length ? (
+                        <div className="mt-6 border-t border-white/10 pt-5">
+                          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-600">Activity</p>
+                          <div className="mt-5 grid gap-5">
+                            {conversationTimeline.map((item, index) => (
+                              <div key={`${item.speaker}-${item.text}-${index}`} className="grid grid-cols-[minmax(140px,160px)_minmax(0,1fr)] gap-5">
+                                <p className="pt-0.5 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-red-500">{item.speaker}</p>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold leading-6 text-white">{item.text}</p>
+                                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">Current session</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="mt-5 border-t border-white/10 pt-4">
                         <p className="text-sm font-black text-white">What would you like to do?</p>
                         <div className="mt-3 grid gap-2">
                           <button
                             type="button"
-                            onClick={() => setConversationView("project-detail")}
+                            onClick={() => void handleContinueProject(latestEntry.project)}
                             className="border border-white/10 px-4 py-3 text-left text-xs font-black uppercase tracking-[0.16em] text-zinc-300 transition hover:border-red-500 hover:text-white"
                           >
                             Continue Project
                           </button>
                           <button
                             type="button"
-                            onClick={() => setConversationView("founder-review")}
+                            onClick={() => {
+                              if (latestEntry.project) void handleProjectReview(latestEntry.project);
+                            }}
                             className="border border-white/10 px-4 py-3 text-left text-xs font-black uppercase tracking-[0.16em] text-zinc-300 transition hover:border-red-500 hover:text-white"
                           >
                             Review Project
@@ -836,42 +1353,61 @@ function ExecutiveOfficeContent() {
                   )}
                 </article>
               ) : (
-                <div className="border border-white/10 bg-black/40 p-5">
-                  <p className="text-sm font-bold leading-6 text-zinc-500">
-                    Type “Spotlight Ashland University” to run the first Headquarters workflow with placeholder data.
-                  </p>
+                <div className="border border-white/10 bg-black/40 p-4 sm:p-5">
+                  <div className="mt-5 grid gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-600">Suggested prompts</p>
+                    {suggestedPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => setConversationInput(prompt)}
+                        className="border border-white/10 px-4 py-3 text-left text-xs font-black uppercase tracking-[0.16em] text-zinc-300 transition hover:border-red-500 hover:text-white"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
-            <form onSubmit={handleConversationSubmit} className="flex flex-col justify-end gap-5 p-5 sm:p-6">
-              <button
-                type="button"
-                aria-label="Microphone placeholder"
-                className="mx-auto flex size-24 items-center justify-center rounded-full border border-white/15 bg-black text-white shadow-2xl shadow-black/60 transition hover:border-red-500 hover:text-red-500"
-              >
-                <Mic size={34} />
-              </button>
-              <div className="flex items-center gap-3 border border-white/10 bg-[#181818] p-2">
+            <form onSubmit={handleConversationSubmit} className="shrink-0 border-t border-white/10 bg-[#121212] px-4 py-5 shadow-[0_-18px_40px_rgba(0,0,0,0.28)] sm:px-5 sm:py-6">
+              <div className="flex w-full items-center gap-4 border border-white/10 bg-[#181818] px-3 py-3.5 shadow-2xl shadow-black/30 transition focus-within:border-red-500/70">
+                <span className="ml-2 shrink-0 text-zinc-500" aria-label="Voice commands coming later." title="Voice commands coming later.">
+                  <Mic aria-hidden="true" size={18} />
+                </span>
                 <input
-                  aria-label="Executive conversation placeholder"
+                  aria-label="Executive conversation input"
                   value={conversationInput}
                   onChange={(event) => setConversationInput(event.target.value)}
                   placeholder="Type a direction for the workspace..."
-                  className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm font-bold text-white outline-none placeholder:text-zinc-600"
+                  className="min-w-0 flex-1 bg-transparent py-4 text-sm font-bold text-white outline-none placeholder:text-zinc-600"
                 />
                 <button
                   type="submit"
-                  aria-label="Send placeholder"
+                  aria-label="Send direction"
                   className="flex size-11 shrink-0 items-center justify-center bg-red-600 text-white transition hover:bg-red-500"
                 >
                   <Send size={17} />
                 </button>
               </div>
-              {conversationError ? <p className="text-center text-xs font-bold leading-5 text-red-400">{conversationError}</p> : null}
-              <p className="text-center text-xs font-bold leading-5 text-zinc-600">Microphone remains a visual placeholder. Text runs in this browser session only.</p>
+              {conversationError ? <p className="mt-3 text-center text-xs font-bold leading-5 text-red-400">{conversationError}</p> : null}
             </form>
-          </section>
+        </section>
+
+        <section className="border border-white/10 bg-[#0c0c0c]" aria-labelledby="executive-activity-title">
+          <header className="border-b border-white/10 p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-500">Activity Timeline</p>
+            <h2 id="executive-activity-title" className="mt-2 text-lg font-black text-white">Headquarters activity, newest first</h2>
+          </header>
+          <div className="max-h-[680px] overflow-y-auto p-5">
+            <ExecutiveTimeline
+              events={timelineEvents}
+              loading={timelineLoading}
+              error={timelineLoadError}
+              emptyMessage="No project activity has been recorded yet."
+            />
+          </div>
         </section>
       </div>
     </div>
