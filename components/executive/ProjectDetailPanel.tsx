@@ -144,7 +144,7 @@ export function ProjectDetailPanel({
               {actionPending === action ? "Working" : label}
             </button>
           ))}
-          {actionMessage ? <p className="col-span-2 text-xs font-bold leading-5 text-red-200" aria-live="polite">{actionMessage}</p> : null}
+          {actionMessage ? <p className="col-span-2 whitespace-pre-line text-xs font-bold leading-5 text-red-200" aria-live="polite">{actionMessage}</p> : null}
         </div>
 
         {priorityAssessment ? (

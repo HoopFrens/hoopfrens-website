@@ -8,6 +8,7 @@ import {
   scopeArtifactResponse,
   type ProjectScopedArtifact,
 } from "@/components/executive/projectArtifactState";
+import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
 import {
   formatProjectDate,
   formatProjectPriority,
@@ -425,8 +426,8 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         archive: "Project archived.",
       };
       setActionMessage(messages[action]);
-    } catch {
-      setActionMessage("Headquarters could not update this project.");
+    } catch (error) {
+      setActionMessage(projectWorkflowNotification(error, selectedProject) || "Headquarters could not update this project.");
     } finally {
       setActionPending(null);
     }
@@ -485,9 +486,12 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         setResearchPackageOpen(false);
         setActionMessage("Production complete. Project is ready for Founder Review.");
       }
-    } catch {
+    } catch (error) {
       if (selectedProjectIdRef.current === serviceProjectId) {
-        setActionMessage("Headquarters could not complete the selected Executive Service.");
+        setActionMessage(
+          projectWorkflowNotification(error, selectedProject) ||
+            "Headquarters could not complete the selected Executive Service.",
+        );
       }
     } finally {
       setServicePending(false);

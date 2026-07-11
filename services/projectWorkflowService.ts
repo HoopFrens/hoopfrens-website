@@ -14,6 +14,16 @@ export type ProjectWorkflowAction =
   | "publish"
   | "archive";
 
+export class ProjectWorkflowActionNotAllowedError extends Error {
+  readonly action: ProjectWorkflowAction;
+
+  constructor(action: ProjectWorkflowAction) {
+    super(`Project workflow action is not allowed: ${action}`);
+    this.name = "ProjectWorkflowActionNotAllowedError";
+    this.action = action;
+  }
+}
+
 function currentState(project: Project) {
   return project.state || project.status;
 }
@@ -95,7 +105,7 @@ export const projectWorkflowService = {
     context: LifecycleTransitionContext = {},
   ): Partial<Project> {
     if (!this.canApply(project, action, context)) {
-      throw new Error(`Project workflow action is not allowed: ${action}`);
+      throw new ProjectWorkflowActionNotAllowedError(action);
     }
 
     if (action === "continue") {

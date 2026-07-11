@@ -36,6 +36,7 @@ import { FounderDailyBrief } from "@/components/executive/FounderDailyBrief";
 import { NeedsAttention } from "@/components/executive/NeedsAttention";
 import { OpportunitiesRecommendations } from "@/components/executive/OpportunitiesRecommendations";
 import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
+import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import {
@@ -765,16 +766,21 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   }
 
   async function handleRevisionRequest(project: Project) {
-    if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
-    const updatedProject = await projectRevisionService.request(
-      requireProjectRepository(),
-      productionPackageRepository,
-      project,
-    );
+    setConversationError("");
+    try {
+      if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
+      const updatedProject = await projectRevisionService.request(
+        requireProjectRepository(),
+        productionPackageRepository,
+        project,
+      );
 
-    updateLatestProject(updatedProject, "Project Briefing", "Revise project brief");
-    await refreshSessionProjects();
-    setConversationView("headquarters");
+      updateLatestProject(updatedProject, "Project Briefing", "Revise project brief");
+      await refreshSessionProjects();
+      setConversationView("headquarters");
+    } catch (error) {
+      showWorkflowFailure(error, project, "Headquarters could not request a revision.");
+    }
   }
 
   function handleFounderApproval(project: Project) {
@@ -782,31 +788,46 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
     setConversationView("founder-approval");
   }
 
-  async function handleProjectReview(project: Project) {
-    if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
-    const productionPackage = await productionPackageRepository.getByProjectId(project.id);
-    const productionReadiness = productionReadinessService.evaluate(project, productionPackage);
-    const updatedProject = await requireProjectRepository().update(
-      project.id,
-      projectWorkflowService.createUpdate(project, "review", new Date().toISOString(), { productionReadiness }),
-      { expectedUpdatedAt: project.updatedAt },
-    );
+  function showWorkflowFailure(error: unknown, project: Project, fallback: string) {
+    setConversationError(projectWorkflowNotification(error, project) || fallback);
+    focusExecutiveConversation();
+  }
 
-    updateLatestProject(updatedProject, "Founder Review", "Review the package and choose approval, revision, or return.");
-    await refreshSessionProjects();
-    setConversationView("founder-review");
+  async function handleProjectReview(project: Project) {
+    setConversationError("");
+    try {
+      if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
+      const productionPackage = await productionPackageRepository.getByProjectId(project.id);
+      const productionReadiness = productionReadinessService.evaluate(project, productionPackage);
+      const updatedProject = await requireProjectRepository().update(
+        project.id,
+        projectWorkflowService.createUpdate(project, "review", new Date().toISOString(), { productionReadiness }),
+        { expectedUpdatedAt: project.updatedAt },
+      );
+
+      updateLatestProject(updatedProject, "Founder Review", "Review the package and choose approval, revision, or return.");
+      await refreshSessionProjects();
+      setConversationView("founder-review");
+    } catch (error) {
+      showWorkflowFailure(error, project, "Headquarters could not open Founder Review.");
+    }
   }
 
   async function handleConfirmApproval(project: Project) {
-    const updatedProject = await requireProjectRepository().update(
-      project.id,
-      projectWorkflowService.createUpdate(project, "approve"),
-      { expectedUpdatedAt: project.updatedAt },
-    );
+    setConversationError("");
+    try {
+      const updatedProject = await requireProjectRepository().update(
+        project.id,
+        projectWorkflowService.createUpdate(project, "approve"),
+        { expectedUpdatedAt: project.updatedAt },
+      );
 
-    updateLatestProject(updatedProject, "Founder Approval Complete", "Prepare next approved step");
-    await refreshSessionProjects();
-    setConversationView("headquarters");
+      updateLatestProject(updatedProject, "Founder Approval Complete", "Prepare next approved step");
+      await refreshSessionProjects();
+      setConversationView("headquarters");
+    } catch (error) {
+      showWorkflowFailure(error, project, "Headquarters could not complete Founder approval.");
+    }
   }
 
   async function createWorkflowResponse(request: string, submissionId: string): Promise<ConversationEntry> {
@@ -1499,7 +1520,11 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
                   {conversationSubmitting ? <Loader2 className="animate-spin" size={17} /> : <Send size={17} />}
                 </button>
               </div>
-              {conversationError ? <p className="mt-3 text-center text-xs font-bold leading-5 text-red-400">{conversationError}</p> : null}
+              {conversationError ? (
+                <p className="mt-3 whitespace-pre-line text-center text-xs font-bold leading-5 text-red-400" role="status" aria-atomic="true">
+                  {conversationError}
+                </p>
+              ) : null}
             </form>
         </section>
 

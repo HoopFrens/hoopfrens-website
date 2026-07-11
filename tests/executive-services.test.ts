@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
 import { ArtifactStatus, ArtifactType, type BusinessObject } from "@/domain/business-object";
 import { createProjectUpdateEvents, ExecutiveEventType } from "@/domain/event";
 import { createInMemoryProjectRepository, createVolatileProjectStore, ProjectType, ProjectWorkspace, type Project, type ProjectRepository } from "@/domain/project";
@@ -23,6 +24,7 @@ import {
   executivePrioritizationService,
   executiveRecommendationService,
   productionReadinessService,
+  ProjectWorkflowActionNotAllowedError,
   projectWorkflowService,
   projectLifecyclePolicy,
   projectRevisionService,
@@ -329,6 +331,47 @@ test("authoritative lifecycle policy rejects bypasses and allows only readiness-
   assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Review, ProjectStatus.Approved), true);
   assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Approved, ProjectStatus.Published), true);
   assert.throws(() => projectLifecyclePolicy.assertTransition(ProjectStatus.Draft, ProjectStatus.Approved));
+});
+
+test("invalid workflow actions stay rejected and become Founder-friendly notifications", () => {
+  const draftProject = createProject(ProjectStatus.Draft);
+  let rejection: unknown;
+
+  try {
+    projectWorkflowService.createUpdate(draftProject, "review", now);
+  } catch (error) {
+    rejection = error;
+  }
+
+  assert.ok(rejection instanceof ProjectWorkflowActionNotAllowedError);
+  assert.equal(
+    projectWorkflowNotification(rejection, draftProject),
+    [
+      "Review is not available yet.",
+      "",
+      "This project must complete the Production stage before it can enter Founder Review.",
+      "",
+      "Current state:\nDraft",
+      "",
+      "Next required action:\nBegin research",
+    ].join("\n"),
+  );
+  assert.equal(draftProject.state, ProjectStatus.Draft);
+
+  const productionProject = {
+    ...createProject(ProjectStatus.Production),
+    productionCompletedAt: now,
+  };
+  const ready = {
+    status: ProductionReadinessStatus.ReadyForReview,
+    reasons: [],
+    missingRequirements: [],
+    checkedAt: now,
+  };
+  assert.equal(
+    projectWorkflowService.createUpdate(productionProject, "review", now, { productionReadiness: ready }).state,
+    ProjectStatus.Review,
+  );
 });
 
 test("revision supersedes prior production, invalidates readiness, and requires a new completion", async () => {
