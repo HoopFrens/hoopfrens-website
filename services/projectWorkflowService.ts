@@ -1,5 +1,6 @@
 import type { Project, ProjectStateHistoryEntry, ProjectWorkspaceHistoryEntry } from "@/domain/project";
 import { ProjectWorkspace } from "@/domain/project";
+import { ProductionReadinessStatus } from "@/domain/services";
 import { ProjectStatus } from "@/domain/shared";
 import { projectLifecyclePolicy, type LifecycleTransitionContext } from "./projectLifecyclePolicy";
 
@@ -23,6 +24,11 @@ export class ProjectWorkflowActionNotAllowedError extends Error {
     this.action = action;
   }
 }
+
+export type ProjectWorkflowActionAvailability = {
+  allowed: boolean;
+  reason: string | null;
+};
 
 function currentState(project: Project) {
   return project.state || project.status;
@@ -88,6 +94,39 @@ function targetState(action: ProjectWorkflowAction) {
   return null;
 }
 
+function unavailableActionReason(
+  project: Project,
+  action: ProjectWorkflowAction,
+  context: LifecycleTransitionContext,
+) {
+  const state = currentState(project);
+
+  if (state === ProjectStatus.Archived) return "This project has been archived. No further workflow actions are available.";
+  if (state === ProjectStatus.Published && action !== "archive") return "This project has already been published. The next available action is Archive.";
+
+  if (action === "review") {
+    if (state === ProjectStatus.Draft) return "Review is unavailable. Complete Research, Outline, and Production first.";
+    if (state === ProjectStatus.Research) return "Review is unavailable. Complete Research, Outline, and Production first.";
+    if (state === ProjectStatus.Outline) return "Review is unavailable. Complete Outline and Production first.";
+    if (state === ProjectStatus.Production && context.productionReadiness?.status !== ProductionReadinessStatus.ReadyForReview) {
+      return "Review is unavailable. Complete all production-readiness requirements first.";
+    }
+    if (state === ProjectStatus.Review) return "Review is unavailable because this project is already in Founder Review. The next available action is Approve or Request Revision.";
+    if (state === ProjectStatus.Approved) return "Review is unavailable because this project is already approved. The next available action is Publish.";
+  }
+
+  if (action === "approve") {
+    if (state === ProjectStatus.Approved) return "This project is already approved. The next available action is Publish.";
+    return `Approve is unavailable from ${state}. Complete Founder Review first.`;
+  }
+
+  if (action === "publish") return `Publish is unavailable from ${state}. Complete Founder approval first.`;
+  if (action === "archive") return `Archive is unavailable from ${state}. Publish this project first.`;
+  if (action === "continue") return `Continue is unavailable from ${state}. Follow the project's recommended next action.`;
+  if (action === "request-revision") return `Revision is unavailable from ${state}. Enter Founder Review first.`;
+  return `This action is unavailable from ${state}. Follow the project's recommended next action.`;
+}
+
 export const projectWorkflowService = {
   canApply(project: Project, action: ProjectWorkflowAction, context: LifecycleTransitionContext = {}) {
     const state = currentState(project);
@@ -96,6 +135,18 @@ export const projectWorkflowService = {
     if (action === "complete-research") return state === ProjectStatus.Draft || state === ProjectStatus.Research;
     const target = targetState(action);
     return target ? projectLifecyclePolicy.canProjectTransition(project, target, context) : false;
+  },
+
+  availability(
+    project: Project,
+    action: ProjectWorkflowAction,
+    context: LifecycleTransitionContext = {},
+  ): ProjectWorkflowActionAvailability {
+    const allowed = this.canApply(project, action, context);
+    return {
+      allowed,
+      reason: allowed ? null : unavailableActionReason(project, action, context),
+    };
   },
 
   createUpdate(

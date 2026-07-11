@@ -20,6 +20,7 @@ export * from "./outlineService";
 export * from "./productionService";
 export * from "./productionReadinessService";
 export * from "./projectOrchestratorService";
+export * from "./projectArtifactIntegrityService";
 export * from "./projectService";
 export * from "./projectCommandTargetService";
 export * from "./projectWorkflowService";

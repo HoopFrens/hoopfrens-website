@@ -1,19 +1,13 @@
 "use client";
 
 import { ExecutiveTimeline } from "@/components/executive/ExecutiveTimeline";
-import { ProductionPackagePanel } from "@/components/executive/ProductionPackagePanel";
 import type { Project } from "@/domain/project";
 import type { ExecutiveEvent } from "@/domain/event";
 import type { PriorityAssessment } from "@/domain/prioritization";
-import {
-  type ProductionPackage,
-  type ProductionReadinessResult,
-  type ResearchPackage,
-} from "@/domain/services";
+import { type ProductionReadinessResult } from "@/domain/services";
 import { ProjectStatus } from "@/domain/shared";
-import type { ProjectWorkflowAction } from "@/services";
+import type { ProjectArtifactIntegrityWarning, ProjectWorkflowAction } from "@/services";
 import { Archive, BadgeCheck, BookOpenCheck, Clapperboard, ClipboardCheck, Clock3, FileStack, FlaskConical, MapPin, Play, Send, X } from "lucide-react";
-import { ResearchPackagePanel } from "@/components/executive/ResearchPackagePanel";
 import {
   formatProjectDate,
   formatProjectPriority,
@@ -31,14 +25,10 @@ type ProjectDetailPanelProps = {
   ownerLabel: string;
   actionPending: ProjectWorkflowAction | null;
   actionMessage: string;
-  researchPackage: ResearchPackage | null;
-  researchPackageOpen: boolean;
   researchPackageLoading: boolean;
-  researchPackageMessage: string;
-  productionPackage: ProductionPackage | null;
-  productionPackageOpen: boolean;
+  outlinePackageLoading: boolean;
   productionPackageLoading: boolean;
-  productionPackageMessage: string;
+  artifactIntegrityWarning: ProjectArtifactIntegrityWarning | null;
   productionReadiness: ProductionReadinessResult | null;
   servicePending: boolean;
   timelineEvents: ExecutiveEvent[];
@@ -49,10 +39,8 @@ type ProjectDetailPanelProps = {
   onRunOutline(): void;
   onRunProduction(): void;
   onOpenResearchPackage(): void;
+  onOpenOutlinePackage(): void;
   onOpenProductionPackage(): void;
-  onCloseResearchPackage(): void;
-  onCloseProductionPackage(): void;
-  onBeginReview(): void;
   onClose(): void;
 };
 
@@ -71,14 +59,10 @@ export function ProjectDetailPanel({
   ownerLabel,
   actionPending,
   actionMessage,
-  researchPackage,
-  researchPackageOpen,
   researchPackageLoading,
-  researchPackageMessage,
-  productionPackage,
-  productionPackageOpen,
+  outlinePackageLoading,
   productionPackageLoading,
-  productionPackageMessage,
+  artifactIntegrityWarning,
   productionReadiness,
   servicePending,
   timelineEvents,
@@ -89,19 +73,22 @@ export function ProjectDetailPanel({
   onRunOutline,
   onRunProduction,
   onOpenResearchPackage,
+  onOpenOutlinePackage,
   onOpenProductionPackage,
-  onCloseResearchPackage,
-  onCloseProductionPackage,
-  onBeginReview,
   onClose,
 }: ProjectDetailPanelProps) {
   const state = getProjectState(project);
   const stateHistory = project.stateHistory || [];
 
-  function actionDisabled(action: ProjectWorkflowAction) {
-    if (actionPending) return true;
-    return !projectWorkflowService.canApply(project, action, { productionReadiness });
-  }
+  const actionAvailability = new Map(
+    actionConfiguration.map(({ action }) => [
+      action,
+      projectWorkflowService.availability(project, action, { productionReadiness }),
+    ]),
+  );
+  const disabledActionGuidance = actionConfiguration
+    .map(({ action, label }) => ({ action, label, availability: actionAvailability.get(action)! }))
+    .filter(({ availability }) => !availability.allowed);
 
   return (
     <aside className="min-h-0 border border-white/10 bg-[#0d0d0d] xl:sticky xl:top-0 xl:max-h-[calc(100vh-112px)]">
@@ -130,20 +117,58 @@ export function ProjectDetailPanel({
       </div>
 
       <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
+        {artifactIntegrityWarning ? (
+          <section className="border-b border-amber-300/20 bg-amber-300/[0.06] p-4" role="status" aria-atomic="true">
+            <p className="text-xs font-black text-amber-200">{artifactIntegrityWarning.title}</p>
+            <p className="mt-2 text-xs font-bold leading-5 text-zinc-300">{artifactIntegrityWarning.message}</p>
+            <p className="mt-2 text-xs font-bold leading-5 text-amber-100">
+              Missing artifacts: {artifactIntegrityWarning.missingArtifacts.join(", ")}.
+            </p>
+          </section>
+        ) : null}
+
         <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-4">
-          {actionConfiguration.map(({ action, label, icon: Icon }) => (
-            <button
-              key={action}
-              type="button"
-              onClick={() => onAction(action)}
-              disabled={actionDisabled(action)}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-              title={`${label} project`}
-            >
-              <Icon size={14} />
-              {actionPending === action ? "Working" : label}
-            </button>
-          ))}
+          {actionConfiguration.map(({ action, label, icon: Icon }) => {
+            const availability = actionAvailability.get(action)!;
+            const pendingReason = actionPending ? "Headquarters is finishing another project action." : null;
+            const disabledReason = pendingReason || availability.reason;
+            const disabled = Boolean(actionPending) || !availability.allowed;
+            const reasonId = `project-action-${action}-reason`;
+            return (
+              <button
+                key={action}
+                type="button"
+                onClick={() => onAction(action)}
+                disabled={disabled}
+                aria-describedby={actionPending ? "project-action-pending-reason" : !availability.allowed && availability.reason ? reasonId : undefined}
+                className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                title={disabledReason || `${label} project`}
+              >
+                <Icon size={14} />
+                {actionPending === action ? "Working" : label}
+              </button>
+            );
+          })}
+          {actionPending ? (
+            <p id="project-action-pending-reason" className="col-span-2 text-xs font-bold leading-5 text-zinc-400" role="status">
+              Headquarters is finishing another project action.
+            </p>
+          ) : null}
+          {disabledActionGuidance.length ? (
+            <div className="col-span-2 mt-1 border-l-2 border-amber-300/50 pl-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-300">Unavailable Actions</p>
+              <ul className="mt-2 grid gap-2">
+                {disabledActionGuidance.map(({ action, label, availability }) => (
+                  <li key={action} id={`project-action-${action}-reason`} className="text-xs font-bold leading-5 text-zinc-300">
+                    <span className="text-white">{label}:</span> {availability.reason}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] font-bold leading-4 text-zinc-500">
+                Current state: {formatProjectState(state)} · Next: {project.recommendedNextAction}
+              </p>
+            </div>
+          ) : null}
           {actionMessage ? <p className="col-span-2 whitespace-pre-line text-xs font-bold leading-5 text-red-200" aria-live="polite">{actionMessage}</p> : null}
         </div>
 
@@ -227,6 +252,15 @@ export function ProjectDetailPanel({
             </button>
             <button
               type="button"
+              onClick={onOpenOutlinePackage}
+              disabled={outlinePackageLoading}
+              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FileStack size={14} />
+              {outlinePackageLoading ? "Opening Package" : "Open Outline Package"}
+            </button>
+            <button
+              type="button"
               onClick={onOpenProductionPackage}
               disabled={productionPackageLoading}
               className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -235,33 +269,7 @@ export function ProjectDetailPanel({
               {productionPackageLoading ? "Opening Package" : "Open Production Package"}
             </button>
           </div>
-          {researchPackageMessage && !researchPackageOpen ? (
-            <p className="mt-3 text-xs font-bold leading-5 text-red-200" aria-live="polite">{researchPackageMessage}</p>
-          ) : null}
-          {productionPackageMessage && !productionPackageOpen ? (
-            <p className="mt-3 text-xs font-bold leading-5 text-red-200" aria-live="polite">{productionPackageMessage}</p>
-          ) : null}
         </section>
-
-        {researchPackageOpen ? (
-          <ResearchPackagePanel
-            researchPackage={researchPackage}
-            loading={researchPackageLoading}
-            message={researchPackageMessage}
-            onClose={onCloseResearchPackage}
-          />
-        ) : null}
-
-        {productionPackageOpen ? (
-          <ProductionPackagePanel
-            productionPackage={productionPackage}
-            readiness={productionReadiness}
-            loading={productionPackageLoading}
-            message={productionPackageMessage}
-            onBeginReview={onBeginReview}
-            onClose={onCloseProductionPackage}
-          />
-        ) : null}
 
         <section className="border-b border-white/10 p-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Full Project Brief</h3>
