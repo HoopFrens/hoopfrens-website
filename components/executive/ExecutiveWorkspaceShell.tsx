@@ -27,6 +27,7 @@ import {
   projectWorkflowService,
 } from "@/services";
 import { CompanyHealth } from "@/components/executive/CompanyHealth";
+import { AccessRestricted } from "@/components/admin/AccessRestricted";
 import { ExecutiveRecommendation } from "@/components/executive/ExecutiveRecommendation";
 import { ExecutiveTimeline } from "@/components/executive/ExecutiveTimeline";
 import { FounderDailyBrief } from "@/components/executive/FounderDailyBrief";
@@ -48,7 +49,6 @@ import {
   Map as MapIcon,
   Mic,
   Send,
-  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -393,20 +393,7 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
     return (
       <WorkspaceFrame>
         <div className="flex h-full items-center justify-center px-5">
-          <div className="w-full max-w-lg border border-white/10 bg-black p-7 shadow-2xl">
-            <ShieldAlert className="text-red-500" size={28} />
-            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">Internal Workspace</p>
-            <h1 className="mt-3 text-3xl font-black uppercase text-white">Admin access required</h1>
-            <p className="mt-4 text-sm leading-6 text-zinc-400">
-              Headquarters requires a signed-in Firebase user with an admin role.
-            </p>
-            <Link
-              href="/admin/login"
-              className="mt-6 inline-flex rounded-lg bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-red-500"
-            >
-              Go to admin login
-            </Link>
-          </div>
+          <AccessRestricted />
         </div>
       </WorkspaceFrame>
     );

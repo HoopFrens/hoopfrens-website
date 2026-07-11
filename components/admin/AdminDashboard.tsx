@@ -15,10 +15,11 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { ChevronRight, ImagePlus, Loader2, LogOut, ShieldAlert } from "lucide-react";
+import { ChevronRight, ImagePlus, Loader2, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { adminAuthorizationService } from "@/services";
 import { collectionManagerKey } from "./adminDashboardUtils";
+import { AccessRestricted } from "./AccessRestricted";
 import { FormEvent, useCallback, useRef, useEffect, useState } from "react";
 
 type AdminStatus = "checking" | "signed-out" | "checking-role" | "admin" | "denied" | "unconfigured";
@@ -231,7 +232,7 @@ export function AdminDashboard() {
   if (authStatus === "unconfigured") return <AdminShell><AdminMessage title="Firebase is not configured" body="Add the Firebase environment variables before using the admin dashboard." /></AdminShell>;
   if (authStatus === "checking" || authStatus === "checking-role") return <AdminShell><AdminLoading label={authStatus === "checking-role" ? "Checking admin access" : "Checking session"} /></AdminShell>;
   if (authStatus === "signed-out") return <AdminShell><AdminLoading label="Redirecting to login" /></AdminShell>;
-  if (authStatus === "denied") return <AdminShell><AccessDenied user={user} /></AdminShell>;
+  if (authStatus === "denied") return <AdminShell><AccessRestricted /></AdminShell>;
 
   const activeConfig = editableConfigs.find((config) => config.key === activeSection);
 
@@ -280,16 +281,6 @@ function AdminLoading({ label }: { label: string }) {
 
 function AdminMessage({ title, body }: { title: string; body: string }) {
   return <div className="mx-auto max-w-xl border border-white/10 bg-black p-8"><h1 className="text-3xl font-black uppercase">{title}</h1><p className="mt-4 leading-7 text-zinc-400">{body}</p></div>;
-}
-
-function AccessDenied({ user }: { user: User | null }) {
-  return (
-    <div className="mx-auto max-w-xl border border-red-600/40 bg-black p-8">
-      <ShieldAlert className="text-red-500" size={34} />
-      <h1 className="mt-4 text-4xl font-black uppercase">Access denied.</h1>
-      <p className="mt-4 leading-7 text-zinc-400">{user?.email || "This user"} is authenticated but does not have an admin role.</p>
-    </div>
-  );
 }
 
 function DashboardHome() {
