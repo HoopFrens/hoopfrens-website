@@ -22,9 +22,11 @@ import {
   founderDailyBriefService,
   intentService,
   projectOrchestratorService,
+  projectCommandTargetService,
   productionReadinessService,
   projectRevisionService,
   projectWorkflowService,
+  createSubmissionIdempotencyTracker,
 } from "@/services";
 import { CompanyHealth } from "@/components/executive/CompanyHealth";
 import { AccessRestricted } from "@/components/admin/AccessRestricted";
@@ -85,6 +87,10 @@ export type ConversationEntry = {
   nextStep: string;
   createdAt: string;
 };
+
+function createSubmissionId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function restoreConversationHistory(storedHistory: string | null): ConversationEntry[] {
   if (!storedHistory) return [];
@@ -491,6 +497,7 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   const [conversationInput, setConversationInput] = useState("");
   const [conversationSubmitting, setConversationSubmitting] = useState(false);
   const submissionInFlight = useRef(false);
+  const submissionIdempotency = useRef(createSubmissionIdempotencyTracker(createSubmissionId));
   const [sessionProjects, setSessionProjects] = useState<Project[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<ExecutiveEvent[]>([]);
   const [projectLoadError, setProjectLoadError] = useState("");
@@ -612,10 +619,6 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
     return `${subject} ${formatProjectType(normalizedType)}`;
   }
 
-  function normalizeProjectMatch(value: string) {
-    return value.toLowerCase().replace(/school spotlight/g, "").replace(/university/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-  }
-
   function requireProjectRepository() {
     if (!projectRepository) {
       throw new Error("Project repository is unavailable.");
@@ -651,11 +654,8 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
 
   async function findContinuationProject(entityName: string | undefined) {
     const projects = await listSessionProjects();
-    if (projects.length === 0) return null;
-    if (!entityName) return projects.length === 1 ? projects[0] : null;
-
-    const searchValue = normalizeProjectMatch(entityName);
-    return projects.find((project) => normalizeProjectMatch(project.title).includes(searchValue)) || (projects.length === 1 ? projects[0] : null);
+    const contextualProjectId = conversationHistory.find((entry) => entry.project)?.project?.id || null;
+    return projectCommandTargetService.resolve(projects, entityName, contextualProjectId);
   }
 
   function createClarificationEntry(request: string, question: string): ConversationEntry {
@@ -743,15 +743,16 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   async function handleContinueProject(project: Project | undefined) {
     try {
       setConversationError("");
-      const projectToContinue = project || (await findContinuationProject(undefined));
-
+      let projectToContinue = project;
       if (!projectToContinue) {
-        const sessionProjects = await listSessionProjects();
-        const question =
-          sessionProjects.length > 1 ? "Which project should Headquarters continue?" : "Create a project before continuing.";
-        setConversationHistory((currentHistory) => [createClarificationEntry("Continue Project", question), ...currentHistory].slice(0, 6));
-        setConversationView("headquarters");
-        return;
+        const resolution = await findContinuationProject(undefined);
+        if (resolution.ok) projectToContinue = resolution.project;
+        else {
+          const question = projectCommandTargetService.clarification(resolution);
+          setConversationHistory((currentHistory) => [createClarificationEntry("Continue Project", question), ...currentHistory].slice(0, 6));
+          setConversationView("headquarters");
+          return;
+        }
       }
 
       const briefingEntry = await createProjectBriefingEntry("Continue Project", projectToContinue);
@@ -893,14 +894,21 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
         };
       },
       continue: async (intent) => {
-        const project = await findContinuationProject(intent.relatedEntityName);
-        return project && projectWorkflowService.canApply(project, "continue")
-          ? createProjectBriefingEntry(request, project)
-          : createClarificationEntry(request, "Which existing project should Headquarters continue?");
+        const resolution = await findContinuationProject(intent.relatedEntityName);
+        if (!resolution.ok) {
+          return createClarificationEntry(request, projectCommandTargetService.clarification(resolution));
+        }
+        return projectWorkflowService.canApply(resolution.project, "continue")
+          ? createProjectBriefingEntry(request, resolution.project)
+          : createClarificationEntry(request, "Choose an active project that can be continued.");
       },
       review: async (intent) => {
-        const project = await findContinuationProject(intent.relatedEntityName);
-        if (!project || !productionPackageRepository) {
+        const resolution = await findContinuationProject(intent.relatedEntityName);
+        if (!resolution.ok) {
+          return createClarificationEntry(request, projectCommandTargetService.clarification(resolution));
+        }
+        const project = resolution.project;
+        if (!productionPackageRepository) {
           return createClarificationEntry(request, "Which review-ready project should Headquarters open?");
         }
         const productionPackage = await productionPackageRepository.getByProjectId(project.id);
@@ -924,8 +932,12 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
         };
       },
       approve: async (intent) => {
-        const project = await findContinuationProject(intent.relatedEntityName);
-        if (!project || !projectWorkflowService.canApply(project, "approve")) {
+        const resolution = await findContinuationProject(intent.relatedEntityName);
+        if (!resolution.ok) {
+          return createClarificationEntry(request, projectCommandTargetService.clarification(resolution));
+        }
+        const project = resolution.project;
+        if (!projectWorkflowService.canApply(project, "approve")) {
           return createClarificationEntry(request, "Which project in Founder Review should Headquarters approve?");
         }
         const updatedProject = await requireProjectRepository().update(
@@ -944,18 +956,18 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
         };
       },
       search: async (intent) => {
-        const project = await findContinuationProject(intent.relatedEntityName);
-        return project
+        const resolution = await findContinuationProject(intent.relatedEntityName);
+        return resolution.ok
           ? {
               id: `conversation_${Date.now()}`,
               request,
-              project,
+              project: resolution.project,
               status: "success",
               message: "Project Found",
-              nextStep: project.recommendedNextAction,
+              nextStep: resolution.project.recommendedNextAction,
               createdAt: new Date().toISOString(),
             }
-          : createClarificationEntry(request, "No matching existing project was found.");
+          : createClarificationEntry(request, projectCommandTargetService.clarification(resolution));
       },
       navigate: async (intent) => {
         router.push(`/executive-workspace/${intent.targetRoom}`);
@@ -986,7 +998,7 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
       return;
     }
 
-    const submissionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const submissionId = submissionIdempotency.current.idFor(request);
     submissionInFlight.current = true;
     setConversationSubmitting(true);
     setConversationError("");
@@ -995,6 +1007,7 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
       await refreshSessionProjects();
       setConversationHistory((currentHistory) => [response, ...currentHistory].slice(0, 6));
       setConversationView("headquarters");
+      submissionIdempotency.current.complete(request);
       setConversationInput("");
     } catch {
       setConversationError("Headquarters could not process that request yet.");
@@ -1470,7 +1483,10 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
                   aria-label="Executive conversation input"
                   value={conversationInput}
                   disabled={conversationSubmitting}
-                  onChange={(event) => setConversationInput(event.target.value)}
+                  onChange={(event) => {
+                    submissionIdempotency.current.cancel();
+                    setConversationInput(event.target.value);
+                  }}
                   placeholder="Type a direction for the workspace..."
                   className="min-w-0 flex-1 bg-transparent py-4 text-sm font-bold text-white outline-none placeholder:text-zinc-600"
                 />

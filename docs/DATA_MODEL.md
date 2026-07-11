@@ -41,9 +41,9 @@ Every persisted Headquarters service artifact implements the shared `BusinessObj
 - `summary`
 - Firestore-safe `metadata`
 
-Approved artifact types are Research Package, Outline Package, Production Package, Review Package, and Publishing Package. Type-specific package interfaces add their operational payload without redefining artifact identity or provenance.
+`ArtifactType` reserves Research Package, Outline Package, Production Package, Review Package, and Publishing Package as typed artifact categories. Release 2.4 implements concrete payload models and repositories only for Research, Outline, and Production Packages. Review and Publishing remain reserved artifact types for future Engineering Orders; they do not yet have concrete package payload interfaces, standalone repositories, or package viewers.
 
-`BusinessObjectRepository<T>` provides the shared package repository boundary. Concrete repositories preserve type-specific collection ownership while exposing the same `getByProjectId` and `save` contract.
+`BusinessObjectRepository<T>` provides the shared package repository boundary. The implemented Research, Outline, and Production repositories preserve type-specific collection ownership while exposing the same `getByProjectId` and `save` contract. The project transaction layer reserves Review and Publishing collection mappings so future typed artifacts can be committed atomically, but those mappings are not concrete package implementations.
 
 ## Executive Events
 

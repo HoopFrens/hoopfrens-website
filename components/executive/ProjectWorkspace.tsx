@@ -4,6 +4,11 @@ import { ProjectDetailPanel } from "@/components/executive/ProjectDetailPanel";
 import { ProjectFilterSelect } from "@/components/executive/ProjectFilterSelect";
 import { ProjectPrioritySummary } from "@/components/executive/ProjectPrioritySummary";
 import {
+  artifactForProject,
+  scopeArtifactResponse,
+  type ProjectScopedArtifact,
+} from "@/components/executive/projectArtifactState";
+import {
   formatProjectDate,
   formatProjectPriority,
   formatProjectState,
@@ -45,7 +50,7 @@ import {
 } from "@/services";
 import { ArrowUpDown, FolderKanban, Loader2, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ProjectWorkspaceProps = {
   currentUserId: string;
@@ -96,6 +101,7 @@ function formatProjectOwner(project: Project, currentUserId: string, currentUser
 export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const selectedProjectIdRef = useRef<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState(allFilters);
   const [stateFilter, setStateFilter] = useState(allFilters);
@@ -131,11 +137,11 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   const [actionPending, setActionPending] = useState<ProjectWorkflowAction | null>(null);
   const [actionMessage, setActionMessage] = useState("");
   const [servicePending, setServicePending] = useState(false);
-  const [researchPackage, setResearchPackage] = useState<ResearchPackage | null>(null);
+  const [researchPackageState, setResearchPackageState] = useState<ProjectScopedArtifact<ResearchPackage> | null>(null);
   const [researchPackageOpen, setResearchPackageOpen] = useState(false);
   const [researchPackageLoading, setResearchPackageLoading] = useState(false);
   const [researchPackageMessage, setResearchPackageMessage] = useState("");
-  const [productionPackage, setProductionPackage] = useState<ProductionPackage | null>(null);
+  const [productionPackageState, setProductionPackageState] = useState<ProjectScopedArtifact<ProductionPackage> | null>(null);
   const [productionPackageOpen, setProductionPackageOpen] = useState(false);
   const [productionPackageLoading, setProductionPackageLoading] = useState(false);
   const [productionPackageMessage, setProductionPackageMessage] = useState("");
@@ -178,7 +184,10 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         const requestedProject = normalizedProjects.find((project) => project.id === requestedProjectId);
         if (!requestedProject) return;
 
+        selectedProjectIdRef.current = requestedProject.id;
         setSelectedProjectId(requestedProject.id);
+        setResearchPackageState(null);
+        setProductionPackageState(null);
         const requestedView = searchParams.get("view");
         if (requestedView !== "research-package" && requestedView !== "production-package") return;
 
@@ -192,13 +201,20 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
           setProductionPackageLoading(true);
           try {
             const savedPackage = await productionRepository.getByProjectId(requestedProject.id);
-            if (!active) return;
-            setProductionPackage(savedPackage);
+            const scopedPackage = scopeArtifactResponse(
+              requestedProject.id,
+              selectedProjectIdRef.current,
+              savedPackage,
+            );
+            if (!active || !scopedPackage) return;
+            setProductionPackageState(scopedPackage);
             if (!savedPackage) setProductionPackageMessage("No Production Package exists for this project yet.");
           } catch {
-            if (active) setProductionPackageMessage("Headquarters could not load the Production Package.");
+            if (active && selectedProjectIdRef.current === requestedProject.id) {
+              setProductionPackageMessage("Headquarters could not load the Production Package.");
+            }
           } finally {
-            if (active) setProductionPackageLoading(false);
+            if (active && selectedProjectIdRef.current === requestedProject.id) setProductionPackageLoading(false);
           }
           return;
         }
@@ -212,13 +228,20 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         setResearchPackageLoading(true);
         try {
           const savedPackage = await researchRepository.getByProjectId(requestedProject.id);
-          if (!active) return;
-          setResearchPackage(savedPackage);
+          const scopedPackage = scopeArtifactResponse(
+            requestedProject.id,
+            selectedProjectIdRef.current,
+            savedPackage,
+          );
+          if (!active || !scopedPackage) return;
+          setResearchPackageState(scopedPackage);
           if (!savedPackage) setResearchPackageMessage("No research package exists for this project yet.");
         } catch {
-          if (active) setResearchPackageMessage("Headquarters could not load the Research Package.");
+          if (active && selectedProjectIdRef.current === requestedProject.id) {
+            setResearchPackageMessage("Headquarters could not load the Research Package.");
+          }
         } finally {
-          if (active) setResearchPackageLoading(false);
+          if (active && selectedProjectIdRef.current === requestedProject.id) setResearchPackageLoading(false);
         }
       } catch {
         if (active) setError("Headquarters could not load saved projects.");
@@ -281,6 +304,8 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   }, [assessmentByProjectId, currentUserId, currentUserLabel, ownerFilter, priorityFilter, projects, recommendationByProjectId, searchTerm, sortBy, stateFilter, typeFilter, workspaceFilter]);
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
+  const researchPackage = artifactForProject(researchPackageState, selectedProjectId);
+  const productionPackage = artifactForProject(productionPackageState, selectedProjectId);
   const selectedProjectEvents = selectedProject
     ? timelineEvents.filter((event) => event.projectId === selectedProject.id)
     : [];
@@ -303,11 +328,14 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
       setProductionPackageMessage("");
       try {
         const savedPackage = await repository.getByProjectId(projectId);
-        if (active) setProductionPackage(savedPackage);
+        const scopedPackage = scopeArtifactResponse(projectId, selectedProjectIdRef.current, savedPackage);
+        if (active && scopedPackage) setProductionPackageState(scopedPackage);
       } catch {
-        if (active) setProductionPackageMessage("Headquarters could not load Production readiness.");
+        if (active && selectedProjectIdRef.current === projectId) {
+          setProductionPackageMessage("Headquarters could not load Production readiness.");
+        }
       } finally {
-        if (active) setProductionPackageLoading(false);
+        if (active && selectedProjectIdRef.current === projectId) setProductionPackageLoading(false);
       }
     }
 
@@ -319,24 +347,30 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   }, [productionPackageRepository, selectedProjectId]);
 
   function selectProject(projectId: string) {
+    selectedProjectIdRef.current = projectId;
     setSelectedProjectId(projectId);
     setActionMessage("");
-    setResearchPackage(null);
+    setResearchPackageState(null);
     setResearchPackageOpen(false);
+    setResearchPackageLoading(false);
     setResearchPackageMessage("");
-    setProductionPackage(null);
+    setProductionPackageState(null);
     setProductionPackageOpen(false);
+    setProductionPackageLoading(false);
     setProductionPackageMessage("");
   }
 
   function closeProject() {
+    selectedProjectIdRef.current = null;
     setSelectedProjectId(null);
     setActionMessage("");
-    setResearchPackage(null);
+    setResearchPackageState(null);
     setResearchPackageOpen(false);
+    setResearchPackageLoading(false);
     setResearchPackageMessage("");
-    setProductionPackage(null);
+    setProductionPackageState(null);
     setProductionPackageOpen(false);
+    setProductionPackageLoading(false);
     setProductionPackageMessage("");
   }
 
@@ -400,6 +434,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
 
   async function handleRunExecutiveService(expectedServiceType: ExecutiveServiceType) {
     if (!selectedProject || !executiveServiceRegistry) return;
+    const serviceProjectId = selectedProject.id;
     const service = executiveServiceRegistry.resolve(selectedProject);
     if (!service || service.type !== expectedServiceType) {
       setActionMessage("The selected Executive Service is not available for the current project state.");
@@ -421,22 +456,39 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
       const updatedProjects = projects.map((project) => (project.id === updatedProject.id ? updatedProject : project));
       setProjects(updatedProjects);
       await refreshTimeline(updatedProjects);
+      if (selectedProjectIdRef.current !== serviceProjectId) return;
 
       if (expectedServiceType === ExecutiveServiceType.Research && researchPackageRepository) {
-        setResearchPackage(await researchPackageRepository.getByProjectId(selectedProject.id));
+        const savedPackage = await researchPackageRepository.getByProjectId(serviceProjectId);
+        const scopedPackage = scopeArtifactResponse(
+          serviceProjectId,
+          selectedProjectIdRef.current,
+          savedPackage,
+        );
+        if (!scopedPackage) return;
+        setResearchPackageState(scopedPackage);
         setResearchPackageOpen(true);
         setProductionPackageOpen(false);
         setActionMessage("Research complete. Project advanced to Outline.");
       } else if (expectedServiceType === ExecutiveServiceType.Outline) {
         setActionMessage("Outline complete. Project advanced to Production Studio.");
       } else if (expectedServiceType === ExecutiveServiceType.Production && productionPackageRepository) {
-        setProductionPackage(await productionPackageRepository.getByProjectId(selectedProject.id));
+        const savedPackage = await productionPackageRepository.getByProjectId(serviceProjectId);
+        const scopedPackage = scopeArtifactResponse(
+          serviceProjectId,
+          selectedProjectIdRef.current,
+          savedPackage,
+        );
+        if (!scopedPackage) return;
+        setProductionPackageState(scopedPackage);
         setProductionPackageOpen(true);
         setResearchPackageOpen(false);
         setActionMessage("Production complete. Project is ready for Founder Review.");
       }
     } catch {
-      setActionMessage("Headquarters could not complete the selected Executive Service.");
+      if (selectedProjectIdRef.current === serviceProjectId) {
+        setActionMessage("Headquarters could not complete the selected Executive Service.");
+      }
     } finally {
       setServicePending(false);
     }
@@ -456,37 +508,47 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
 
   async function handleOpenResearchPackage() {
     if (!selectedProject || !researchPackageRepository) return;
+    const projectId = selectedProject.id;
 
     setProductionPackageOpen(false);
     setResearchPackageOpen(true);
     setResearchPackageLoading(true);
     setResearchPackageMessage("");
     try {
-      const savedPackage = await researchPackageRepository.getByProjectId(selectedProject.id);
-      setResearchPackage(savedPackage);
+      const savedPackage = await researchPackageRepository.getByProjectId(projectId);
+      const scopedPackage = scopeArtifactResponse(projectId, selectedProjectIdRef.current, savedPackage);
+      if (!scopedPackage) return;
+      setResearchPackageState(scopedPackage);
       if (!savedPackage) setResearchPackageMessage("No research package exists for this project yet.");
     } catch {
-      setResearchPackageMessage("Headquarters could not load the Research Package.");
+      if (selectedProjectIdRef.current === projectId) {
+        setResearchPackageMessage("Headquarters could not load the Research Package.");
+      }
     } finally {
-      setResearchPackageLoading(false);
+      if (selectedProjectIdRef.current === projectId) setResearchPackageLoading(false);
     }
   }
 
   async function handleOpenProductionPackage() {
     if (!selectedProject || !productionPackageRepository) return;
+    const projectId = selectedProject.id;
 
     setResearchPackageOpen(false);
     setProductionPackageOpen(true);
     setProductionPackageLoading(true);
     setProductionPackageMessage("");
     try {
-      const savedPackage = await productionPackageRepository.getByProjectId(selectedProject.id);
-      setProductionPackage(savedPackage);
+      const savedPackage = await productionPackageRepository.getByProjectId(projectId);
+      const scopedPackage = scopeArtifactResponse(projectId, selectedProjectIdRef.current, savedPackage);
+      if (!scopedPackage) return;
+      setProductionPackageState(scopedPackage);
       if (!savedPackage) setProductionPackageMessage("No Production Package exists for this project yet.");
     } catch {
-      setProductionPackageMessage("Headquarters could not load the Production Package.");
+      if (selectedProjectIdRef.current === projectId) {
+        setProductionPackageMessage("Headquarters could not load the Production Package.");
+      }
     } finally {
-      setProductionPackageLoading(false);
+      if (selectedProjectIdRef.current === projectId) setProductionPackageLoading(false);
     }
   }
 

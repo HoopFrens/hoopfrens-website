@@ -36,6 +36,7 @@ export const productionReadinessService = {
     }
 
     if (
+      productionPackage.projectId !== project.id ||
       productionPackage.active === false ||
       !project.productionCompletedAt ||
       (project.activeProductionVersion !== undefined &&
@@ -44,7 +45,7 @@ export const productionReadinessService = {
     ) {
       return {
         status: ProductionReadinessStatus.NeedsProduction,
-        reasons: ["Production readiness must be recalculated from a new active Production Package."],
+        reasons: ["Production readiness requires the current project's active Production Package."],
         missingRequirements: ["Active Production Package"],
         checkedAt: now.toISOString(),
       };

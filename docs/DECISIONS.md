@@ -55,7 +55,7 @@ The Service Registry selects work from project state rather than interface locat
 
 Services are deterministic until a future Engineering Order explicitly approves AI. Generated artifacts are stored independently and linked to the project.
 
-Every service artifact implements one shared Business Object contract for identity, project linkage, type, version, status, timestamps, creator, workspace, generating service, summary, and metadata. Research, Outline, Production, Review, and Publishing packages extend that contract with type-specific payloads. A generic repository interface keeps service code independent from Firestore while concrete repositories retain protected type-specific collections.
+Every implemented service artifact uses one shared Business Object contract for identity, project linkage, type, version, status, timestamps, creator, workspace, generating service, summary, and metadata. Release 2.4 provides concrete type-specific payloads and repositories for Research, Outline, and Production Packages. Review and Publishing are reserved `ArtifactType` values and transaction collection mappings only; concrete package models, repositories, and viewers require future Engineering Orders. A generic repository interface keeps implemented service code independent from Firestore while concrete repositories retain protected type-specific collections.
 
 Research Packages use `internalResearchPackages`, Outline Packages use `internalOutlinePackages`, and Production Packages use `internalProductionPackages`. Production versions use deterministic versioned document IDs so superseded packages remain historical. Revision makes the prior package inactive and requires a new active version before Review.
 
