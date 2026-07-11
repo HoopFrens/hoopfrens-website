@@ -191,13 +191,13 @@ export function ProjectDetailPanel({
 
         <section className="border-b border-white/10 p-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Executive Services</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2">
             {state === ProjectStatus.Draft || state === ProjectStatus.Research ? (
               <button
                 type="button"
                 onClick={onRunResearch}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 min-w-0 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <FlaskConical size={14} />
                 {servicePending ? "Running Research" : "Run Research Service"}
@@ -208,7 +208,7 @@ export function ProjectDetailPanel({
                 type="button"
                 onClick={onRunOutline}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 min-w-0 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <FileStack size={14} />
                 {servicePending ? "Building Outline" : "Run Outline Service"}
@@ -219,7 +219,7 @@ export function ProjectDetailPanel({
                 type="button"
                 onClick={onRunProduction}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 min-w-0 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Clapperboard size={14} />
                 {servicePending ? "Building Package" : "Run Production Service"}
@@ -229,7 +229,7 @@ export function ProjectDetailPanel({
               type="button"
               onClick={onOpenResearchPackage}
               disabled={researchPackageLoading}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 min-w-0 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               <BookOpenCheck size={14} />
               {researchPackageLoading ? "Opening Package" : "Open Research Package"}
@@ -238,7 +238,7 @@ export function ProjectDetailPanel({
               type="button"
               onClick={onOpenProductionPackage}
               disabled={productionPackageLoading}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 min-w-0 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Clapperboard size={14} />
               {productionPackageLoading ? "Opening Package" : "Open Production Package"}

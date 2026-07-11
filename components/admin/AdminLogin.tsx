@@ -6,11 +6,33 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
+const firebaseEnvPresence = {
+  NEXT_PUBLIC_FIREBASE_API_KEY: Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: Boolean(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: Boolean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: Boolean(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: Boolean(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+  NEXT_PUBLIC_FIREBASE_APP_ID: Boolean(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+};
+
+function getFirebaseAuthErrorCode(error: unknown) {
+  if (typeof error !== "object" || error === null || !("code" in error)) return "";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
+}
+
 export function AdminLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(isFirebaseConfigured);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isDevelopment) return;
+    console.info("[Hoop Frens Auth] Firebase env presence", firebaseEnvPresence);
+  }, []);
 
   useEffect(() => {
     if (!auth) return;
@@ -27,8 +49,13 @@ export function AdminLogin() {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
       router.replace("/admin");
-    } catch {
-      setError("Google sign-in could not be completed.");
+    } catch (signInError) {
+      const errorCode = getFirebaseAuthErrorCode(signInError);
+      if (isDevelopment) {
+        console.error("[Hoop Frens Auth] Google sign-in failed", signInError);
+        console.info("[Hoop Frens Auth] Google sign-in error code", errorCode || "unknown");
+      }
+      setError(`Google sign-in could not be completed.${isDevelopment && errorCode ? ` (${errorCode})` : ""}`);
     } finally {
       setLoading(false);
     }

@@ -28,6 +28,8 @@ import { ExecutiveTimeline } from "@/components/executive/ExecutiveTimeline";
 import { FounderDailyBrief } from "@/components/executive/FounderDailyBrief";
 import { NeedsAttention } from "@/components/executive/NeedsAttention";
 import { OpportunitiesRecommendations } from "@/components/executive/OpportunitiesRecommendations";
+import { OperationalWorkspaceRoom } from "@/components/executive/OperationalWorkspaceRoom";
+import { ProductionStudio } from "@/components/executive/ProductionStudio";
 import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -275,7 +277,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
     href: "/executive-workspace/intelligence-center",
     eyebrow: "Research",
     title: "Intelligence Center",
-    description: "Placeholder surface for basketball knowledge, source review, and signal gathering.",
+    description: "Research work, source coverage, priority signals, and current project intelligence.",
     icon: MapIcon,
     panels: ["Signals", "Sources", "Watchlist"],
   },
@@ -285,7 +287,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
     href: "/executive-workspace/production-studio",
     eyebrow: "Media",
     title: "Production Studio",
-    description: "Placeholder surface for assets, packages, publishing readiness, and creative operations.",
+    description: "Active production work, packages, creative requirements, and Founder Review readiness.",
     icon: Clapperboard,
     panels: ["Packages", "Assets", "Queue"],
   },
@@ -295,7 +297,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
     href: "/executive-workspace/strategy-room",
     eyebrow: "Decisions",
     title: "Strategy Room",
-    description: "Placeholder surface for decisions, tradeoffs, bets, and strategic context.",
+    description: "Portfolio priorities, risk, Founder attention, and explainable next-action recommendations.",
     icon: DoorOpen,
     panels: ["Decisions", "Risks", "Next calls"],
   },
@@ -305,7 +307,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
     href: "/executive-workspace/product-lab",
     eyebrow: "Build",
     title: "Product Lab",
-    description: "Placeholder surface for platform experiments, product architecture, and future workflows.",
+    description: "Product initiatives, dependencies, delivery constraints, and available operating services.",
     icon: Beaker,
     panels: ["Ideas", "Specs", "Experiments"],
   },
@@ -315,7 +317,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
     href: "/executive-workspace/library",
     eyebrow: "Archive",
     title: "Library",
-    description: "Placeholder surface for documents, references, reusable context, and institutional memory.",
+    description: "Generated artifacts, project records, and preserved Headquarters activity.",
     icon: BookOpen,
     panels: ["References", "Docs", "Saved context"],
   },
@@ -478,6 +480,13 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
               <ExecutiveOfficeContent currentUserId={user?.uid || "founder"} />
             ) : activeSpace.id === "projects" ? (
               <ProjectsWorkspace currentUserId={user?.uid || "founder"} currentUserLabel={userLabel} />
+            ) : activeSpace.id === "production-studio" ? (
+              <ProductionStudio currentUserId={user?.uid || "founder"} />
+            ) : activeSpace.id === "intelligence-center" ||
+              activeSpace.id === "strategy-room" ||
+              activeSpace.id === "product-lab" ||
+              activeSpace.id === "library" ? (
+              <OperationalWorkspaceRoom roomId={activeSpace.id} currentUserId={user?.uid || "founder"} />
             ) : (
               <WorkspacePlaceholder activeSpace={activeSpace} />
             )}
