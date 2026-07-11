@@ -30,7 +30,7 @@ export function AccessRestricted() {
       className="mx-auto w-full max-w-xl border border-red-600/40 bg-black p-6 shadow-2xl sm:p-8"
     >
       <ShieldAlert aria-hidden="true" className="text-red-500" size={34} />
-      <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">Hoop Frens Headquarters</p>
+      <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">{accessDeniedCopy.eyebrow}</p>
       <h1 id="access-restricted-title" className="mt-3 text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
         {accessDeniedCopy.title}
       </h1>

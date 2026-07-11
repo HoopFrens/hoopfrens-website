@@ -41,9 +41,10 @@ test("Headquarters authorization allows only authenticated admin user documents"
 
 test("authenticated denial copy protects account and authorization details", () => {
   assert.deepEqual(accessDeniedCopy, {
+    eyebrow: "Authorized Access Required",
     title: "Access Restricted",
-    body: "Your account has been authenticated, but it is not authorized to access Hoop Frens Headquarters.",
-    help: "If you believe this is an error, contact a Headquarters administrator.",
+    body: "Your account has been authenticated successfully, but you do not have permission to access Hoop Frens Headquarters.",
+    help: "If you believe this is an error, please contact a Headquarters administrator.",
   });
   const renderedCopy = Object.values(accessDeniedCopy).join(" ");
   assert.doesNotMatch(renderedCopy, /@/);
@@ -53,6 +54,7 @@ test("authenticated denial copy protects account and authorization details", () 
 test("Access Restricted view omits identity details and exposes a Sign Out action", () => {
   const markup = renderToStaticMarkup(createElement(AccessRestricted));
 
+  assert.match(markup, /Authorized Access Required/i);
   assert.match(markup, /Access Restricted/i);
   assert.match(markup, /Sign Out/i);
   assert.doesNotMatch(markup, /@/);
