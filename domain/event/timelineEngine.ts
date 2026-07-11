@@ -18,7 +18,8 @@ function eventId(projectId: string, eventType: ExecutiveEventType, timestamp: st
   return [projectId, eventType, timestampKey, qualifierKey].filter(Boolean).join("_");
 }
 
-function eventTypeForState(state: ProjectStatus) {
+function eventTypeForTransition(fromState: ProjectStatus, state: ProjectStatus) {
+  if (fromState === ProjectStatus.Review && state === ProjectStatus.Production) return ExecutiveEventType.RevisionRequested;
   if (state === ProjectStatus.Outline) return ExecutiveEventType.ResearchCompleted;
   if (state === ProjectStatus.Production) return ExecutiveEventType.OutlineCompleted;
   if (state === ProjectStatus.Review) return ExecutiveEventType.ReviewRequested;
@@ -28,6 +29,9 @@ function eventTypeForState(state: ProjectStatus) {
 }
 
 function stateSummary(fromState: ProjectStatus, toState: ProjectStatus) {
+  if (fromState === ProjectStatus.Review && toState === ProjectStatus.Production) {
+    return "Founder requested revision. Prior production readiness was invalidated.";
+  }
   if (toState === ProjectStatus.Outline) return "Research completed. Project advanced to Outline.";
   if (toState === ProjectStatus.Production) return "Outline completed. Project advanced to Production.";
   if (toState === ProjectStatus.Review) return "Founder Review requested.";
@@ -67,7 +71,7 @@ function stateChangedEvent(
   timestamp: string,
   relatedWorkspace: ProjectWorkspace,
 ): ExecutiveEvent {
-  const eventType = eventTypeForState(toState);
+  const eventType = eventTypeForTransition(fromState, toState);
   return {
     id: eventId(project.id, eventType, timestamp, `${fromState}-${toState}`),
     workspaceId: project.workspaceId,
@@ -242,6 +246,7 @@ export const executiveEventLabels: Record<ExecutiveEventType, string> = {
   [ExecutiveEventType.ResearchCompleted]: "Research Completed",
   [ExecutiveEventType.OutlineCompleted]: "Outline Completed",
   [ExecutiveEventType.ProductionCompleted]: "Production Completed",
+  [ExecutiveEventType.RevisionRequested]: "Revision Requested",
   [ExecutiveEventType.ReviewRequested]: "Review Requested",
   [ExecutiveEventType.ApprovalCompleted]: "Approval Completed",
   [ExecutiveEventType.PublishingCompleted]: "Publishing Completed",

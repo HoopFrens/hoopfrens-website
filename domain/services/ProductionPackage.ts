@@ -26,4 +26,6 @@ export interface ProductionPackage extends BusinessObject {
   publishingRequirements: ProductionChecklistItem[];
   qaChecklist: ProductionChecklistItem[];
   nextRecommendedStep: string;
+  active?: boolean;
+  supersededAt?: string;
 }

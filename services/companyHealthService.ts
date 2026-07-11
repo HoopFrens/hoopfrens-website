@@ -37,13 +37,17 @@ export const companyHealthService = {
     );
     const blockedProjects = activeProjects.filter((project) => Boolean(project.currentBlocker));
     const criticalBlockedProjects = blockedProjects.filter(isCriticalBlocked);
-    const productionReadyProjectIds = new Set(
-      events
-        .filter((event) => event.eventType === ExecutiveEventType.ProductionCompleted)
-        .map((event) => event.projectId),
-    );
     const pendingReviews = activeProjects.filter(
-      (project) => getProjectState(project) === ProjectStatus.Review || productionReadyProjectIds.has(project.id),
+      (project) =>
+        getProjectState(project) === ProjectStatus.Review ||
+        (getProjectState(project) === ProjectStatus.Production &&
+          Boolean(project.productionCompletedAt) &&
+          events.some(
+            (event) =>
+              event.projectId === project.id &&
+              event.eventType === ExecutiveEventType.ProductionCompleted &&
+              event.timestamp === project.productionCompletedAt,
+          )),
     );
     const approvedProjects = activeProjects.filter((project) => getProjectState(project) === ProjectStatus.Approved);
     const websiteProjects = activeProjects.filter(

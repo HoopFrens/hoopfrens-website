@@ -8,18 +8,22 @@ import {
   type FounderVisitRepository,
 } from "@/domain/briefing";
 import { createFirestoreExecutiveEventRepository, type ExecutiveEvent } from "@/domain/event";
-import { IntentType } from "@/domain/intent";
 import { OrchestrationStatus } from "@/domain/orchestration";
 import { createFirestoreProjectRepository, type Project, ProjectType, ProjectWorkspace } from "@/domain/project";
+import { createFirestoreProductionPackageRepository } from "@/domain/services";
 import { Priority, ProjectStatus, Scope } from "@/domain/shared";
 import { auth, db, isFirebaseConfigured } from "@/lib/firebase";
 import {
   createInitialProjectStateHistory,
+  adminAuthorizationService,
+  executiveCommandService,
   executionPlanningService,
   eventService,
   founderDailyBriefService,
   intentService,
   projectOrchestratorService,
+  productionReadinessService,
+  projectRevisionService,
   projectWorkflowService,
 } from "@/services";
 import { CompanyHealth } from "@/components/executive/CompanyHealth";
@@ -48,7 +52,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 export type ExecutiveSpaceId =
   | "executive-office"
@@ -114,7 +118,6 @@ type ConversationView = "headquarters" | "project-detail" | "founder-review" | "
 const conversationStorageKey = "hoopfrens.executiveOffice.conversationHistory";
 const conversationViewStorageKey = "hoopfrens.executiveOffice.conversationView";
 const executiveWorkspaceId = "executive-workspace";
-const isLocalDeveloperPreview = process.env.NODE_ENV === "development";
 const pendingFounderVisitRegistrations = new Map<string, Promise<FounderVisitRegistration>>();
 
 function recordFounderVisit(
@@ -336,15 +339,13 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
   useEffect(() => {
     if (!auth) return;
 
-    return onAuthStateChanged(auth, async (nextUser) => {
+    let active = true;
+    let authorizationAttempt = 0;
+    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+      const attempt = ++authorizationAttempt;
       setUser(nextUser);
       if (!nextUser) {
         setStatus("signed-out");
-        return;
-      }
-
-      if (!isLocalDeveloperPreview) {
-        setStatus("authenticated");
         return;
       }
 
@@ -353,14 +354,24 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
         return;
       }
 
+      const activeDb = db;
       setStatus("checking-role");
       try {
-        const userSnapshot = await getDoc(doc(db, "users", nextUser.uid));
-        setStatus(userSnapshot.exists() && userSnapshot.data().role === "admin" ? "authenticated" : "denied");
+        const authorization = await adminAuthorizationService.authorize(nextUser, async (uid) => {
+          const userSnapshot = await getDoc(doc(activeDb, "users", uid));
+          return { exists: userSnapshot.exists(), role: userSnapshot.data()?.role };
+        });
+        if (active && attempt === authorizationAttempt) {
+          setStatus(authorization.allowed ? "authenticated" : "denied");
+        }
       } catch {
-        setStatus("denied");
+        if (active && attempt === authorizationAttempt) setStatus("denied");
       }
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const userLabel = useMemo(() => user?.email || "Approved admin", [user]);
@@ -384,10 +395,10 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
         <div className="flex h-full items-center justify-center px-5">
           <div className="w-full max-w-lg border border-white/10 bg-black p-7 shadow-2xl">
             <ShieldAlert className="text-red-500" size={28} />
-            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">Developer Preview</p>
+            <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-500">Internal Workspace</p>
             <h1 className="mt-3 text-3xl font-black uppercase text-white">Admin access required</h1>
             <p className="mt-4 text-sm leading-6 text-zinc-400">
-              Local Executive Workspace preview requires a signed-in Firebase user with an admin role.
+              Headquarters requires a signed-in Firebase user with an admin role.
             </p>
             <Link
               href="/admin/login"
@@ -491,6 +502,8 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
 function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   const router = useRouter();
   const [conversationInput, setConversationInput] = useState("");
+  const [conversationSubmitting, setConversationSubmitting] = useState(false);
+  const submissionInFlight = useRef(false);
   const [sessionProjects, setSessionProjects] = useState<Project[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<ExecutiveEvent[]>([]);
   const [projectLoadError, setProjectLoadError] = useState("");
@@ -500,6 +513,7 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
     [currentUserId],
   );
   const eventRepository = useMemo(() => (db ? createFirestoreExecutiveEventRepository(db) : null), []);
+  const productionPackageRepository = useMemo(() => (db ? createFirestoreProductionPackageRepository(db) : null), []);
   const founderVisitRepository = useMemo(() => (db ? createFirestoreFounderVisitRepository(db) : null), []);
   const [projectsLoading, setProjectsLoading] = useState(Boolean(projectRepository));
   const [timelineLoading, setTimelineLoading] = useState(Boolean(eventRepository));
@@ -669,7 +683,11 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   }
 
   async function createProjectBriefingEntry(request: string, project: Project): Promise<ConversationEntry> {
-    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "continue"));
+    const updatedProject = await requireProjectRepository().update(
+      project.id,
+      projectWorkflowService.createUpdate(project, "continue"),
+      { expectedUpdatedAt: project.updatedAt },
+    );
 
     return {
       id: `conversation_${Date.now()}`,
@@ -759,7 +777,12 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   }
 
   async function handleRevisionRequest(project: Project) {
-    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "request-revision"));
+    if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
+    const updatedProject = await projectRevisionService.request(
+      requireProjectRepository(),
+      productionPackageRepository,
+      project,
+    );
 
     updateLatestProject(updatedProject, "Project Briefing", "Revise project brief");
     await refreshSessionProjects();
@@ -772,7 +795,14 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   }
 
   async function handleProjectReview(project: Project) {
-    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "review"));
+    if (!productionPackageRepository) throw new Error("Production Package repository is unavailable.");
+    const productionPackage = await productionPackageRepository.getByProjectId(project.id);
+    const productionReadiness = productionReadinessService.evaluate(project, productionPackage);
+    const updatedProject = await requireProjectRepository().update(
+      project.id,
+      projectWorkflowService.createUpdate(project, "review", new Date().toISOString(), { productionReadiness }),
+      { expectedUpdatedAt: project.updatedAt },
+    );
 
     updateLatestProject(updatedProject, "Founder Review", "Review the package and choose approval, revision, or return.");
     await refreshSessionProjects();
@@ -780,14 +810,18 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
   }
 
   async function handleConfirmApproval(project: Project) {
-    const updatedProject = await requireProjectRepository().update(project.id, projectWorkflowService.createUpdate(project, "approve"));
+    const updatedProject = await requireProjectRepository().update(
+      project.id,
+      projectWorkflowService.createUpdate(project, "approve"),
+      { expectedUpdatedAt: project.updatedAt },
+    );
 
     updateLatestProject(updatedProject, "Founder Approval Complete", "Prepare next approved step");
     await refreshSessionProjects();
     setConversationView("headquarters");
   }
 
-  async function createWorkflowResponse(request: string): Promise<ConversationEntry> {
+  async function createWorkflowResponse(request: string, submissionId: string): Promise<ConversationEntry> {
     const intentResult = intentService.classify({
       workspaceId: executiveWorkspaceId,
       text: request,
@@ -804,113 +838,182 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
       };
     }
 
-    if (intentResult.data.intentType === IntentType.Continue) {
-      const project = await findContinuationProject(intentResult.data.relatedEntityName);
+    return executiveCommandService.execute(intentResult.data, {
+      create: async (intent) => {
+        const executionPlan = executionPlanningService.createPlan(intent);
+        if (!executionPlan.ok) return createClarificationEntry(request, "Clarify the project request.");
 
-      if (project) return createProjectBriefingEntry(request, project);
+        const orchestrationResult = projectOrchestratorService.orchestrate(executionPlan.data);
+        const blocked =
+          !orchestrationResult.ok ||
+          orchestrationResult.data.status === OrchestrationStatus.Blocked ||
+          executionPlan.data.status === ExecutionStatus.Blocked;
+        if (blocked) {
+          return createClarificationEntry(
+            request,
+            executionPlan.data.clarificationQuestion || "Clarify the project request.",
+          );
+        }
 
-      if ((await listSessionProjects()).length > 1) {
-        return createClarificationEntry(request, "Which project should Headquarters continue?");
-      }
+        const now = new Date().toISOString();
+        const requestId = executiveCommandService.createRequestId(currentUserId, submissionId);
+        const projectType = normalizeProjectType(executionPlan.data.projectType);
+        const currentWorkspace = ProjectWorkspace.IntelligenceCenter;
+        const project = await requireProjectRepository().create({
+          id: executiveCommandService.projectIdForRequest(requestId),
+          creationRequestId: requestId,
+          workspaceId: executiveWorkspaceId,
+          title: createProjectTitle(intent.relatedEntityName, projectType),
+          type: projectType,
+          projectType,
+          currentWorkspace,
+          workspace: formatProjectWorkspace(currentWorkspace),
+          workspaceHistory: [
+            createWorkspaceHistoryEntry(ProjectWorkspace.ExecutiveOffice, "Founder created project", now),
+            createWorkspaceHistoryEntry(ProjectWorkspace.IntelligenceCenter, "Research queued", now),
+          ],
+          stateHistory: createInitialProjectStateHistory(now),
+          state: ProjectStatus.Draft,
+          status: ProjectStatus.Draft,
+          progressPercent: 10,
+          priority: executionPlan.data.priority || Priority.Medium,
+          scope: Scope.Internal,
+          ownerId: currentUserId,
+          dependencies: [],
+          currentBlocker: null,
+          contributorIds: [],
+          knowledgeEntityIds: [],
+          assetIds: [],
+          decisionIds: [],
+          sourceIds: [],
+          createdAt: now,
+          updatedAt: now,
+          completedSoFar: ["Intent classified", "Execution plan created", "Project orchestration queued"],
+          currentStep: "Research",
+          remainingNextStep: "Research",
+          recommendedNextAction: "Begin research",
+          lastActivity: "Project created",
+        });
 
-      return createClarificationEntry(request, "Which project should Headquarters continue?");
-    }
-
-    const executionPlan = executionPlanningService.createPlan(intentResult.data);
-    if (!executionPlan.ok) {
-      return {
-        id: `conversation_${Date.now()}`,
+        return {
+          id: `conversation_${Date.now()}`,
+          request,
+          project,
+          status: "success",
+          message: "Headquarters",
+          nextStep: "Research",
+          createdAt: new Date().toISOString(),
+        };
+      },
+      continue: async (intent) => {
+        const project = await findContinuationProject(intent.relatedEntityName);
+        return project && projectWorkflowService.canApply(project, "continue")
+          ? createProjectBriefingEntry(request, project)
+          : createClarificationEntry(request, "Which existing project should Headquarters continue?");
+      },
+      review: async (intent) => {
+        const project = await findContinuationProject(intent.relatedEntityName);
+        if (!project || !productionPackageRepository) {
+          return createClarificationEntry(request, "Which review-ready project should Headquarters open?");
+        }
+        const productionPackage = await productionPackageRepository.getByProjectId(project.id);
+        const productionReadiness = productionReadinessService.evaluate(project, productionPackage);
+        if (!projectWorkflowService.canApply(project, "review", { productionReadiness })) {
+          return createClarificationEntry(request, "Choose a project with a completed active Production Package.");
+        }
+        const updatedProject = await requireProjectRepository().update(
+          project.id,
+          projectWorkflowService.createUpdate(project, "review", new Date().toISOString(), { productionReadiness }),
+          { expectedUpdatedAt: project.updatedAt },
+        );
+        return {
+          id: `conversation_${Date.now()}`,
+          request,
+          project: updatedProject,
+          status: "success",
+          message: "Founder Review",
+          nextStep: updatedProject.recommendedNextAction,
+          createdAt: new Date().toISOString(),
+        };
+      },
+      approve: async (intent) => {
+        const project = await findContinuationProject(intent.relatedEntityName);
+        if (!project || !projectWorkflowService.canApply(project, "approve")) {
+          return createClarificationEntry(request, "Which project in Founder Review should Headquarters approve?");
+        }
+        const updatedProject = await requireProjectRepository().update(
+          project.id,
+          projectWorkflowService.createUpdate(project, "approve"),
+          { expectedUpdatedAt: project.updatedAt },
+        );
+        return {
+          id: `conversation_${Date.now()}`,
+          request,
+          project: updatedProject,
+          status: "success",
+          message: "Founder Approval Complete",
+          nextStep: updatedProject.recommendedNextAction,
+          createdAt: new Date().toISOString(),
+        };
+      },
+      search: async (intent) => {
+        const project = await findContinuationProject(intent.relatedEntityName);
+        return project
+          ? {
+              id: `conversation_${Date.now()}`,
+              request,
+              project,
+              status: "success",
+              message: "Project Found",
+              nextStep: project.recommendedNextAction,
+              createdAt: new Date().toISOString(),
+            }
+          : createClarificationEntry(request, "No matching existing project was found.");
+      },
+      navigate: async (intent) => {
+        router.push(`/executive-workspace/${intent.targetRoom}`);
+        return {
+          id: `conversation_${Date.now()}`,
+          request,
+          status: "success",
+          message: "Navigation",
+          nextStep: `Open ${formatProjectWorkspace(intent.targetRoom as ProjectWorkspace)}`,
+          createdAt: new Date().toISOString(),
+        };
+      },
+      learn: async () => createClarificationEntry(request, "Knowledge lookup is not available in this release."),
+      think: async () => createClarificationEntry(request, "Strategic brief creation is not available in this release."),
+      unknown: async (intent) => createClarificationEntry(
         request,
-        status: "blocked",
-        message: executionPlan.error,
-        nextStep: "Clarify request",
-        createdAt: new Date().toISOString(),
-      };
-    }
-
-    const orchestrationResult = projectOrchestratorService.orchestrate(executionPlan.data);
-    const blocked =
-      !orchestrationResult.ok ||
-      orchestrationResult.data.status === OrchestrationStatus.Blocked ||
-      executionPlan.data.status === ExecutionStatus.Blocked;
-
-    if (blocked) {
-      return {
-        id: `conversation_${Date.now()}`,
-        request,
-        status: "blocked",
-        message: orchestrationResult.ok ? orchestrationResult.data.blockedReason || "Headquarters needs clarification." : orchestrationResult.error,
-        nextStep: executionPlan.data.clarificationQuestion || "Clarify request",
-        createdAt: new Date().toISOString(),
-      };
-    }
-
-    const now = new Date().toISOString();
-    const projectType = normalizeProjectType(executionPlan.data.projectType);
-    const currentWorkspace = ProjectWorkspace.IntelligenceCenter;
-    const project = await requireProjectRepository().create({
-      id: `project_${Date.now()}`,
-      workspaceId: executiveWorkspaceId,
-      title: createProjectTitle(intentResult.data.relatedEntityName, projectType),
-      type: projectType,
-      projectType,
-      currentWorkspace,
-      workspace: formatProjectWorkspace(currentWorkspace),
-      workspaceHistory: [
-        createWorkspaceHistoryEntry(ProjectWorkspace.ExecutiveOffice, "Founder created project", now),
-        createWorkspaceHistoryEntry(ProjectWorkspace.IntelligenceCenter, "Research queued", now),
-      ],
-      stateHistory: createInitialProjectStateHistory(now),
-      state: ProjectStatus.Draft,
-      status: ProjectStatus.Draft,
-      progressPercent: 10,
-      priority: executionPlan.data.priority || Priority.Medium,
-      scope: Scope.Internal,
-      ownerId: currentUserId,
-      dependencies: [],
-      currentBlocker: null,
-      contributorIds: [],
-      knowledgeEntityIds: [],
-      assetIds: [],
-      decisionIds: [],
-      sourceIds: [],
-      createdAt: now,
-      updatedAt: now,
-      completedSoFar: ["Intent classified", "Execution plan created", "Project orchestration queued"],
-      currentStep: "Research",
-      remainingNextStep: "Research",
-      recommendedNextAction: "Begin research",
-      lastActivity: "Project created",
+        intent.clarificationQuestion || "What would you like Headquarters to do?",
+      ),
     });
-
-    return {
-      id: `conversation_${Date.now()}`,
-      request,
-      project,
-      status: "success",
-      message: "Headquarters",
-      nextStep: "Research",
-      createdAt: new Date().toISOString(),
-    };
   }
 
   async function handleConversationSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submissionInFlight.current) return;
     const request = conversationInput.trim();
     if (!request) {
       setConversationError("Type a request for Headquarters first.");
       return;
     }
 
+    const submissionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    submissionInFlight.current = true;
+    setConversationSubmitting(true);
     setConversationError("");
     try {
-      const response = await createWorkflowResponse(request);
+      const response = await createWorkflowResponse(request, submissionId);
       await refreshSessionProjects();
       setConversationHistory((currentHistory) => [response, ...currentHistory].slice(0, 6));
       setConversationView("headquarters");
       setConversationInput("");
     } catch {
       setConversationError("Headquarters could not process that request yet.");
+    } finally {
+      submissionInFlight.current = false;
+      setConversationSubmitting(false);
     }
   }
 
@@ -1379,6 +1482,7 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
                 <input
                   aria-label="Executive conversation input"
                   value={conversationInput}
+                  disabled={conversationSubmitting}
                   onChange={(event) => setConversationInput(event.target.value)}
                   placeholder="Type a direction for the workspace..."
                   className="min-w-0 flex-1 bg-transparent py-4 text-sm font-bold text-white outline-none placeholder:text-zinc-600"
@@ -1386,9 +1490,10 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
                 <button
                   type="submit"
                   aria-label="Send direction"
-                  className="flex size-11 shrink-0 items-center justify-center bg-red-600 text-white transition hover:bg-red-500"
+                  disabled={conversationSubmitting}
+                  className="flex size-11 shrink-0 items-center justify-center bg-red-600 text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700"
                 >
-                  <Send size={17} />
+                  {conversationSubmitting ? <Loader2 className="animate-spin" size={17} /> : <Send size={17} />}
                 </button>
               </div>
               {conversationError ? <p className="mt-3 text-center text-xs font-bold leading-5 text-red-400">{conversationError}</p> : null}

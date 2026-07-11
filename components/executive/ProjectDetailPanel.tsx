@@ -6,14 +6,13 @@ import type { Project } from "@/domain/project";
 import type { ExecutiveEvent } from "@/domain/event";
 import type { PriorityAssessment } from "@/domain/prioritization";
 import {
-  ProductionReadinessStatus,
   type ProductionPackage,
   type ProductionReadinessResult,
   type ResearchPackage,
 } from "@/domain/services";
 import { ProjectStatus } from "@/domain/shared";
 import type { ProjectWorkflowAction } from "@/services";
-import { Archive, BadgeCheck, BookOpenCheck, Clapperboard, ClipboardCheck, Clock3, FileStack, FlaskConical, MapPin, Play, X } from "lucide-react";
+import { Archive, BadgeCheck, BookOpenCheck, Clapperboard, ClipboardCheck, Clock3, FileStack, FlaskConical, MapPin, Play, Send, X } from "lucide-react";
 import { ResearchPackagePanel } from "@/components/executive/ResearchPackagePanel";
 import {
   formatProjectDate,
@@ -23,6 +22,7 @@ import {
   formatProjectWorkspace,
   getProjectState,
 } from "@/components/executive/projectWorkspaceUtils";
+import { projectWorkflowService } from "@/services";
 
 type ProjectDetailPanelProps = {
   project: Project;
@@ -60,6 +60,7 @@ const actionConfiguration = [
   { action: "continue", label: "Continue", icon: Play },
   { action: "review", label: "Review", icon: ClipboardCheck },
   { action: "approve", label: "Approve", icon: BadgeCheck },
+  { action: "publish", label: "Publish", icon: Send },
   { action: "archive", label: "Archive", icon: Archive },
 ] as const;
 
@@ -95,21 +96,11 @@ export function ProjectDetailPanel({
   onClose,
 }: ProjectDetailPanelProps) {
   const state = getProjectState(project);
-  const terminal = state === ProjectStatus.Published || state === ProjectStatus.Archived;
   const stateHistory = project.stateHistory || [];
 
   function actionDisabled(action: ProjectWorkflowAction) {
     if (actionPending) return true;
-    if (action === "continue") return terminal;
-    if (action === "review") {
-      if (state === ProjectStatus.Production) {
-        return productionReadiness?.status !== ProductionReadinessStatus.ReadyForReview;
-      }
-      return terminal || state === ProjectStatus.Review || state === ProjectStatus.Approved;
-    }
-    if (action === "approve") return state !== ProjectStatus.Review;
-    if (action === "archive") return state === ProjectStatus.Archived;
-    return false;
+    return !projectWorkflowService.canApply(project, action, { productionReadiness });
   }
 
   return (

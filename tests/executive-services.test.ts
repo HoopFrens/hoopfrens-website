@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ArtifactStatus, ArtifactType, type BusinessObject } from "@/domain/business-object";
 import { createProjectUpdateEvents, ExecutiveEventType } from "@/domain/event";
-import { ProjectType, ProjectWorkspace, type Project, type ProjectRepository } from "@/domain/project";
+import { createInMemoryProjectRepository, createVolatileProjectStore, ProjectType, ProjectWorkspace, type Project, type ProjectRepository } from "@/domain/project";
 import { RecommendationCategory } from "@/domain/recommendation";
 import {
   ExecutiveServiceStatus,
@@ -24,6 +24,8 @@ import {
   executiveRecommendationService,
   productionReadinessService,
   projectWorkflowService,
+  projectLifecyclePolicy,
+  projectRevisionService,
 } from "@/services";
 
 const now = "2026-07-09T12:00:00.000Z";
@@ -87,9 +89,25 @@ function createRepositories(initialProject: Project) {
       project = nextProject;
       return project;
     },
-    async update(projectId, update) {
+    async update(projectId, update, options) {
       if (project.id !== projectId) throw new Error("Project not found");
+      if (options?.expectedUpdatedAt && project.updatedAt !== options.expectedUpdatedAt) throw new Error("Project update conflict");
       project = { ...project, ...update };
+      return project;
+    },
+    async updateWithArtifacts(projectId, update, artifacts, options) {
+      if (project.id !== projectId) throw new Error("Project not found");
+      if (options?.expectedUpdatedAt && project.updatedAt !== options.expectedUpdatedAt) throw new Error("Project update conflict");
+      const nextProject = { ...project, ...update };
+      for (const artifact of artifacts) {
+        if (artifact.artifactType === ArtifactType.ResearchPackage) researchPackage = artifact as ResearchPackage;
+        if (artifact.artifactType === ArtifactType.OutlinePackage) outlinePackage = artifact as OutlinePackage;
+        if (artifact.artifactType === ArtifactType.ProductionPackage) {
+          const candidate = artifact as ProductionPackage;
+          if (candidate.active !== false || productionPackage?.id === candidate.id) productionPackage = candidate;
+        }
+      }
+      project = nextProject;
       return project;
     },
   };
@@ -121,6 +139,9 @@ function createRepositories(initialProject: Project) {
     async save(nextPackage) {
       productionPackage = nextPackage;
       return nextPackage;
+    },
+    async getLatestByProjectId(projectId) {
+      return productionPackage?.projectId === projectId ? productionPackage : null;
     },
   };
 
@@ -289,7 +310,120 @@ test("Production completion updates timeline, recommendation, attention, health,
     .find((item) => item.label === "Reviews");
   assert.equal(reviewHealth?.status, "Yellow");
 
-  const reviewUpdate = projectWorkflowService.createUpdate(productionComplete, "review", now);
+  const reviewUpdate = projectWorkflowService.createUpdate(productionComplete, "review", now, {
+    productionReadiness: productionReadinessService.evaluate(productionComplete, repositories.getProductionPackage(), new Date(now)),
+  });
   assert.equal(reviewUpdate.state, ProjectStatus.Review);
   assert.equal(reviewUpdate.currentWorkspace, ProjectWorkspace.ExecutiveOffice);
+});
+
+test("authoritative lifecycle policy rejects bypasses and allows only readiness-gated progression", () => {
+  const ready = { status: ProductionReadinessStatus.ReadyForReview, reasons: [], missingRequirements: [], checkedAt: now };
+  const notReady = { status: ProductionReadinessStatus.NeedsProduction, reasons: [], missingRequirements: [], checkedAt: now };
+
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Draft, ProjectStatus.Review, { productionReadiness: ready }), false);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Research, ProjectStatus.Review, { productionReadiness: ready }), false);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Outline, ProjectStatus.Review, { productionReadiness: ready }), false);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Production, ProjectStatus.Review, { productionReadiness: notReady }), false);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Production, ProjectStatus.Review, { productionReadiness: ready }), true);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Review, ProjectStatus.Approved), true);
+  assert.equal(projectLifecyclePolicy.canTransition(ProjectStatus.Approved, ProjectStatus.Published), true);
+  assert.throws(() => projectLifecyclePolicy.assertTransition(ProjectStatus.Draft, ProjectStatus.Approved));
+});
+
+test("revision supersedes prior production, invalidates readiness, and requires a new completion", async () => {
+  const repositories = createRepositories(createProject(ProjectStatus.Draft));
+  const registry = createExecutiveServiceRegistry(repositories);
+  await registry.execute(repositories.getProject());
+  await registry.execute(repositories.getProject());
+  await registry.execute(repositories.getProject());
+  const completedProject = repositories.getProject();
+  const completedPackage = repositories.getProductionPackage();
+  assert.ok(completedPackage);
+
+  const readiness = productionReadinessService.evaluate(completedProject, completedPackage, new Date(now));
+  const reviewProject = await repositories.projectRepository.update(
+    completedProject.id,
+    projectWorkflowService.createUpdate(completedProject, "review", now, { productionReadiness: readiness }),
+    { expectedUpdatedAt: completedProject.updatedAt },
+  );
+  const revisedProject = await projectRevisionService.request(
+    repositories.projectRepository,
+    repositories.productionPackageRepository,
+    reviewProject,
+    "2026-07-09T13:00:00.000Z",
+  );
+  const historicalPackage = repositories.getProductionPackage();
+  const revisionEvents = createProjectUpdateEvents(reviewProject, revisedProject, "founder");
+
+  assert.equal(revisedProject.state, ProjectStatus.Production);
+  assert.equal(revisedProject.productionCompletedAt, null);
+  assert.equal(revisedProject.activeProductionVersion, null);
+  assert.equal(revisedProject.currentStep, "Revise Production Package");
+  assert.equal(revisedProject.stateHistory?.at(-1)?.reason, "Founder revision requested");
+  assert.equal(revisedProject.workspaceHistory.at(-1)?.reason, "Revision routed to Production Studio");
+  assert.equal(historicalPackage?.active, false);
+  assert.equal(historicalPackage?.status, ArtifactStatus.Archived);
+  assert.ok(revisionEvents.some((event) => event.eventType === ExecutiveEventType.RevisionRequested));
+  assert.equal(productionReadinessService.evaluate(revisedProject, historicalPackage, new Date(now)).status, ProductionReadinessStatus.NeedsProduction);
+  assert.throws(() => projectWorkflowService.createUpdate(revisedProject, "review", now, { productionReadiness: readiness }));
+});
+
+test("Publishing Service advances only Approved projects to Published", async () => {
+  const repositories = createRepositories(createProject(ProjectStatus.Approved));
+  const registry = createExecutiveServiceRegistry(repositories);
+  const result = await registry.execute(repositories.getProject());
+
+  assert.equal(result.status, ExecutiveServiceStatus.Completed);
+  assert.equal(result.updatedProject.state, ProjectStatus.Published);
+  assert.equal(result.updatedProject.currentWorkspace, ProjectWorkspace.Library);
+  assert.equal(repositories.getProject().state, ProjectStatus.Published);
+});
+
+test("stale project mutations are rejected without losing canonical history", async () => {
+  const original = createProject(ProjectStatus.Review);
+  const repository = createInMemoryProjectRepository(createVolatileProjectStore([original]));
+  const first = await repository.update(
+    original.id,
+    projectWorkflowService.createUpdate(original, "approve", "2026-07-09T13:00:00.000Z"),
+    { expectedUpdatedAt: original.updatedAt },
+  );
+
+  await assert.rejects(
+    repository.update(
+      original.id,
+      projectWorkflowService.createUpdate(original, "request-revision", "2026-07-09T13:01:00.000Z"),
+      { expectedUpdatedAt: original.updatedAt },
+    ),
+    /conflict/,
+  );
+  assert.equal((await repository.getById(original.id))?.state, ProjectStatus.Approved);
+  assert.ok((await repository.getById(original.id))?.stateHistory?.length === first.stateHistory?.length);
+});
+
+test("artifact and project completion fail as one atomic mutation", async () => {
+  const project = createProject(ProjectStatus.Research);
+  let savedPackage: ResearchPackage | null = null;
+  let canonicalProject = project;
+  const repositories = createRepositories(project);
+  const failingProjectRepository: ProjectRepository = {
+    ...repositories.projectRepository,
+    async updateWithArtifacts() {
+      throw new Error("simulated transaction failure");
+    },
+  };
+  const researchRepository: ResearchPackageRepository = {
+    async getByProjectId() { return savedPackage; },
+    async save(nextPackage) { savedPackage = nextPackage; return nextPackage; },
+  };
+  const registry = createExecutiveServiceRegistry({
+    ...repositories,
+    projectRepository: failingProjectRepository,
+    researchPackageRepository: researchRepository,
+  });
+
+  await assert.rejects(registry.execute(canonicalProject), /simulated transaction failure/);
+  canonicalProject = (await failingProjectRepository.getById(project.id)) || canonicalProject;
+  assert.equal(savedPackage, null);
+  assert.equal(canonicalProject.state, ProjectStatus.Research);
 });

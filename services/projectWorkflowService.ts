@@ -1,6 +1,7 @@
 import type { Project, ProjectStateHistoryEntry, ProjectWorkspaceHistoryEntry } from "@/domain/project";
 import { ProjectWorkspace } from "@/domain/project";
 import { ProjectStatus } from "@/domain/shared";
+import { projectLifecyclePolicy, type LifecycleTransitionContext } from "./projectLifecyclePolicy";
 
 export type ProjectWorkflowAction =
   | "continue"
@@ -10,6 +11,7 @@ export type ProjectWorkflowAction =
   | "complete-research"
   | "complete-outline"
   | "complete-production"
+  | "publish"
   | "archive";
 
 function currentState(project: Project) {
@@ -18,64 +20,39 @@ function currentState(project: Project) {
 
 function stateHistory(project: Project): ProjectStateHistoryEntry[] {
   if (project.stateHistory?.length) return project.stateHistory;
-
-  return [
-    {
-      state: currentState(project),
-      enteredAt: project.createdAt,
-      reason: "Project created",
-    },
-  ];
+  return [{ state: currentState(project), enteredAt: project.createdAt, reason: "Project created" }];
 }
 
 function workspaceHistory(project: Project): ProjectWorkspaceHistoryEntry[] {
   if (project.workspaceHistory?.length) return project.workspaceHistory;
-
-  return [
-    {
-      workspace: project.currentWorkspace,
-      enteredAt: project.createdAt,
-      reason: "Project created",
-    },
-  ];
+  return [{ workspace: project.currentWorkspace, enteredAt: project.createdAt, reason: "Project created" }];
 }
 
-function transitionState(project: Project, state: ProjectStatus, reason: string, enteredAt: string) {
-  const history = stateHistory(project);
+function transitionPath(
+  project: Project,
+  transitions: Array<{ state: ProjectStatus; reason: string }>,
+  enteredAt: string,
+  context: LifecycleTransitionContext = {},
+) {
+  let from = currentState(project);
+  const history = [...stateHistory(project)];
 
-  return {
-    state,
-    status: state,
-    stateHistory:
-      currentState(project) === state
-        ? history
-        : [
-            ...history,
-            {
-              state,
-              enteredAt,
-              reason,
-            },
-          ],
-  };
+  for (const transition of transitions) {
+    projectLifecyclePolicy.assertTransition(from, transition.state, context);
+    history.push({ state: transition.state, enteredAt, reason: transition.reason });
+    from = transition.state;
+  }
+
+  return { state: from, status: from, stateHistory: history };
 }
 
 function transitionWorkspace(project: Project, workspace: ProjectWorkspace, reason: string, enteredAt: string) {
   const history = workspaceHistory(project);
-
   return {
     currentWorkspace: workspace,
-    workspaceHistory:
-      project.currentWorkspace === workspace
-        ? history
-        : [
-            ...history,
-            {
-              workspace,
-              enteredAt,
-              reason,
-            },
-          ],
+    workspaceHistory: project.currentWorkspace === workspace
+      ? history
+      : [...history, { workspace, enteredAt, reason }],
   };
 }
 
@@ -83,23 +60,47 @@ function addCompletedNote(project: Project, note: string) {
   return project.completedSoFar?.includes(note) ? project.completedSoFar : [...(project.completedSoFar || []), note];
 }
 
+function removeCompletedNote(project: Project, note: string) {
+  return (project.completedSoFar || []).filter((entry) => entry !== note);
+}
+
 export function createInitialProjectStateHistory(createdAt: string): ProjectStateHistoryEntry[] {
-  return [
-    {
-      state: ProjectStatus.Draft,
-      enteredAt: createdAt,
-      reason: "Founder created project",
-    },
-  ];
+  return [{ state: ProjectStatus.Draft, enteredAt: createdAt, reason: "Founder created project" }];
+}
+
+function targetState(action: ProjectWorkflowAction) {
+  if (action === "review") return ProjectStatus.Review;
+  if (action === "approve") return ProjectStatus.Approved;
+  if (action === "request-revision") return ProjectStatus.Production;
+  if (action === "complete-outline") return ProjectStatus.Production;
+  if (action === "publish") return ProjectStatus.Published;
+  if (action === "archive") return ProjectStatus.Archived;
+  return null;
 }
 
 export const projectWorkflowService = {
-  createUpdate(project: Project, action: ProjectWorkflowAction, updatedAt = new Date().toISOString()): Partial<Project> {
+  canApply(project: Project, action: ProjectWorkflowAction, context: LifecycleTransitionContext = {}) {
+    const state = currentState(project);
+    if (action === "continue") return ![ProjectStatus.Published, ProjectStatus.Archived].includes(state);
+    if (action === "complete-production") return state === ProjectStatus.Production;
+    if (action === "complete-research") return state === ProjectStatus.Draft || state === ProjectStatus.Research;
+    const target = targetState(action);
+    return target ? projectLifecyclePolicy.canProjectTransition(project, target, context) : false;
+  },
+
+  createUpdate(
+    project: Project,
+    action: ProjectWorkflowAction,
+    updatedAt = new Date().toISOString(),
+    context: LifecycleTransitionContext = {},
+  ): Partial<Project> {
+    if (!this.canApply(project, action, context)) {
+      throw new Error(`Project workflow action is not allowed: ${action}`);
+    }
+
     if (action === "continue") {
       const currentStep = project.currentStep || project.remainingNextStep || "Research";
       return {
-        ...transitionWorkspace(project, ProjectWorkspace.ProductionStudio, "Project continued for production planning", updatedAt),
-        workspace: "Production Studio",
         updatedAt,
         lastActivity: "Project continued",
         currentStep,
@@ -111,7 +112,7 @@ export const projectWorkflowService = {
     if (action === "review") {
       return {
         ...transitionWorkspace(project, ProjectWorkspace.ExecutiveOffice, "Founder review opened", updatedAt),
-        ...transitionState(project, ProjectStatus.Review, "Founder review opened", updatedAt),
+        ...transitionPath(project, [{ state: ProjectStatus.Review, reason: "Founder review opened" }], updatedAt, context),
         workspace: "Executive Office",
         progressPercent: Math.max(project.progressPercent || 0, 70),
         updatedAt,
@@ -126,14 +127,14 @@ export const projectWorkflowService = {
     if (action === "approve") {
       return {
         ...transitionWorkspace(project, ProjectWorkspace.ExecutiveOffice, "Founder approval completed", updatedAt),
-        ...transitionState(project, ProjectStatus.Approved, "Founder approval completed", updatedAt),
+        ...transitionPath(project, [{ state: ProjectStatus.Approved, reason: "Founder approval completed" }], updatedAt),
         workspace: "Executive Office",
         progressPercent: 90,
         updatedAt,
         completedSoFar: addCompletedNote(project, "Founder approval complete"),
-        currentStep: "Prepare next approved step",
-        remainingNextStep: "Prepare next approved step",
-        recommendedNextAction: "Prepare next approved step",
+        currentStep: "Publishing",
+        remainingNextStep: "Publishing",
+        recommendedNextAction: "Publish the approved project",
         lastActivity: "Founder approval complete",
       };
     }
@@ -141,21 +142,33 @@ export const projectWorkflowService = {
     if (action === "request-revision") {
       return {
         ...transitionWorkspace(project, ProjectWorkspace.ProductionStudio, "Revision routed to Production Studio", updatedAt),
-        ...transitionState(project, ProjectStatus.Draft, "Founder revision requested", updatedAt),
+        ...transitionPath(project, [{ state: ProjectStatus.Production, reason: "Founder revision requested" }], updatedAt),
         workspace: "Production Studio",
-        progressPercent: 15,
+        progressPercent: 55,
         updatedAt,
-        completedSoFar: addCompletedNote(project, "Founder revision requested"),
-        currentStep: "Revise project brief",
-        remainingNextStep: "Revise project brief",
-        recommendedNextAction: "Revise project brief",
+        productionCompletedAt: null,
+        activeProductionVersion: null,
+        productionReadinessInvalidatedAt: updatedAt,
+        completedSoFar: addCompletedNote(
+          { ...project, completedSoFar: removeCompletedNote(project, "Production package generated") },
+          "Founder revision requested",
+        ),
+        currentStep: "Revise Production Package",
+        remainingNextStep: "Revise Production Package",
+        recommendedNextAction: "Generate a new Production Package",
         lastActivity: "Founder requested revision",
       };
     }
 
     if (action === "complete-research") {
+      const transitions = currentState(project) === ProjectStatus.Draft
+        ? [
+            { state: ProjectStatus.Research, reason: "Research started" },
+            { state: ProjectStatus.Outline, reason: "Research completed" },
+          ]
+        : [{ state: ProjectStatus.Outline, reason: "Research completed" }];
       return {
-        ...transitionState(project, ProjectStatus.Outline, "Research completed", updatedAt),
+        ...transitionPath(project, transitions, updatedAt),
         progressPercent: Math.max(project.progressPercent || 0, 35),
         updatedAt,
         completedSoFar: addCompletedNote(project, "Research package generated"),
@@ -169,7 +182,7 @@ export const projectWorkflowService = {
     if (action === "complete-outline") {
       return {
         ...transitionWorkspace(project, ProjectWorkspace.ProductionStudio, "Outline completed and routed to Production Studio", updatedAt),
-        ...transitionState(project, ProjectStatus.Production, "Outline completed", updatedAt),
+        ...transitionPath(project, [{ state: ProjectStatus.Production, reason: "Outline completed" }], updatedAt),
         workspace: "Production Studio",
         progressPercent: Math.max(project.progressPercent || 0, 55),
         updatedAt,
@@ -184,11 +197,11 @@ export const projectWorkflowService = {
     if (action === "complete-production") {
       return {
         ...transitionWorkspace(project, ProjectWorkspace.ProductionStudio, "Production completed in Production Studio", updatedAt),
-        ...transitionState(project, ProjectStatus.Production, "Production completed", updatedAt),
         workspace: "Production Studio",
         progressPercent: Math.max(project.progressPercent || 0, 70),
         updatedAt,
         productionCompletedAt: updatedAt,
+        productionReadinessInvalidatedAt: null,
         completedSoFar: addCompletedNote(project, "Production package generated"),
         currentStep: "Founder Review",
         remainingNextStep: "Founder Review",
@@ -197,8 +210,22 @@ export const projectWorkflowService = {
       };
     }
 
+    if (action === "publish") {
+      return {
+        ...transitionWorkspace(project, ProjectWorkspace.Library, "Publishing completed", updatedAt),
+        ...transitionPath(project, [{ state: ProjectStatus.Published, reason: "Publishing completed" }], updatedAt),
+        workspace: "Library",
+        progressPercent: 100,
+        updatedAt,
+        currentStep: "Published",
+        remainingNextStep: "Archive when appropriate",
+        recommendedNextAction: "Archive completed project",
+        lastActivity: "Publishing complete",
+      };
+    }
+
     return {
-      ...transitionState(project, ProjectStatus.Archived, "Project archived", updatedAt),
+      ...transitionPath(project, [{ state: ProjectStatus.Archived, reason: "Project archived" }], updatedAt),
       updatedAt,
       currentStep: "Archived",
       remainingNextStep: "Archived",

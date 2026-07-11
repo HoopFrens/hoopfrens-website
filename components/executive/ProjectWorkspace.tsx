@@ -39,6 +39,7 @@ import {
   executivePrioritizationService,
   executiveRecommendationService,
   productionReadinessService,
+  projectRevisionService,
   projectWorkflowService,
   type ProjectWorkflowAction,
 } from "@/services";
@@ -366,9 +367,15 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
     setActionPending(action);
     setActionMessage("");
     try {
-      const updatedProject = normalizeWorkspaceProject(
-        await projectRepository.update(selectedProject.id, projectWorkflowService.createUpdate(selectedProject, action)),
-      );
+      const updatedProject = normalizeWorkspaceProject(action === "request-revision" && productionPackageRepository
+        ? await projectRevisionService.request(projectRepository, productionPackageRepository, selectedProject)
+        : await projectRepository.update(
+            selectedProject.id,
+            projectWorkflowService.createUpdate(selectedProject, action, new Date().toISOString(), {
+              productionReadiness: selectedProductionReadiness,
+            }),
+            { expectedUpdatedAt: selectedProject.updatedAt },
+          ));
       const updatedProjects = projects.map((project) => (project.id === updatedProject.id ? updatedProject : project));
       setProjects(updatedProjects);
       await refreshTimeline(updatedProjects);
@@ -380,6 +387,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         "complete-research": "Research complete. Project advanced to Outline.",
         "complete-outline": "Outline complete. Project advanced to Production.",
         "complete-production": "Production complete. Project is ready for Founder Review.",
+        publish: "Project published.",
         archive: "Project archived.",
       };
       setActionMessage(messages[action]);

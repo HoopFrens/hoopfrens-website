@@ -33,7 +33,7 @@ The Executive Intelligence Timeline is the canonical history of meaningful proje
 
 Project creation and project updates write their event records in the same Firestore batch or transaction as the canonical project change. Event IDs are deterministic, making retries and historical backfill idempotent. Existing project state and workspace histories are backfilled once into the event collection so pre-timeline work remains visible without becoming placeholder data.
 
-Approved event types are project created, project state changed, workspace changed, research completed, outline completed, review requested, approval completed, and publishing completed. A lifecycle transition produces the most specific applicable event rather than a duplicate generic state-change entry.
+Approved event types are project created, project state changed, workspace changed, research completed, outline completed, production completed, review requested, revision requested, approval completed, and publishing completed. A lifecycle transition produces the most specific applicable event rather than a duplicate generic state-change entry.
 
 ## Workspace Philosophy
 
@@ -57,7 +57,7 @@ Services are deterministic until a future Engineering Order explicitly approves 
 
 Every service artifact implements one shared Business Object contract for identity, project linkage, type, version, status, timestamps, creator, workspace, generating service, summary, and metadata. Research, Outline, Production, Review, and Publishing packages extend that contract with type-specific payloads. A generic repository interface keeps service code independent from Firestore while concrete repositories retain protected type-specific collections.
 
-Research Packages use `internalResearchPackages`, Outline Packages use `internalOutlinePackages`, and Production Packages use `internalProductionPackages`. Each collection stores the current package version under a deterministic project-linked document ID. Regeneration increments the package version while preserving the original creation timestamp.
+Research Packages use `internalResearchPackages`, Outline Packages use `internalOutlinePackages`, and Production Packages use `internalProductionPackages`. Production versions use deterministic versioned document IDs so superseded packages remain historical. Revision makes the prior package inactive and requires a new active version before Review.
 
 Outline completion produces an approved Outline Package and moves the project to Production Studio. ProductionService requires that approved outline, generates a persisted Production Package, and leaves the project in Production until the deterministic readiness engine confirms that the working draft, required checklists, graphics, media, publishing requirements, and QA are complete. Founder Review remains an explicit subsequent transition.
 
@@ -89,6 +89,8 @@ The approved lifecycle is:
 
 Each project carries enough state to answer what it is, who owns it, where it is, how far it has progressed, what is blocking it, what happens next, and what happened most recently. State transitions are explicit. Founder review and Founder approval remain distinct control points.
 
+One lifecycle policy is authoritative for interface availability and service/domain enforcement. The forward path is strictly sequential. Production may enter Review only with current readiness evidence; the supported revision transition is Review back to Production.
+
 ## Why Firestore
 
 Firestore is the approved persistence layer because it fits the existing Firebase authentication stack, supports protected internal collections, maps naturally to the typed repository model, and provides the realtime client capabilities Headquarters may need later.
@@ -96,6 +98,10 @@ Firestore is the approved persistence layer because it fits the existing Firebas
 Application code accesses project data through repository interfaces. This keeps domain and workflow logic independent from Firestore details, preserves testability, and allows in-memory implementations where appropriate.
 
 Firestore security must continue to rely on authenticated admin access. Session storage may preserve temporary interface context, but it is not the source of truth for persistent project records.
+
+Every Headquarters route performs the Firestore `users/{uid}.role === "admin"` check in development and production before protected content renders. Missing documents, missing roles, non-admin roles, signed-out users, and lookup failures deny access. Firestore security rules remain the server-enforced data boundary.
+
+Project mutations use Firestore transactions with canonical version/timestamp conflict checks. Artifact-producing services commit their Business Object and associated project advancement in the same transaction, so partial completion is not an accepted state.
 
 ## Why Deterministic Logic Before AI
 

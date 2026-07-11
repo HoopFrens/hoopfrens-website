@@ -61,9 +61,11 @@ Approved event types are project created, project state changed, workspace chang
 
 Production completion stores `productionCompletedAt` on the project so timeline backfill keeps the original completion time after later review or approval updates.
 
-Executive events are stored under `internalExecutiveEvents`. Project creation uses a Firestore batch and project updates use a Firestore transaction so the project record and its timeline events commit together. Deterministic event IDs make retries and project-history backfill idempotent.
+Executive events are stored under `internalExecutiveEvents`. Project creation and updates use Firestore transactions so the project record, timeline events, and associated service artifacts commit together. Deterministic project and event IDs make create retries and project-history backfill idempotent. Project versions and expected timestamps reject stale mutations.
 
 Current protected internal collections include `internalProjects`, `internalResearchPackages`, `internalOutlinePackages`, `internalProductionPackages`, `internalFounderVisits`, and `internalExecutiveEvents`. Existing admin authorization rules continue to govern these records.
+
+Production Packages are versioned Business Objects with an active/superseded marker. Revision preserves the prior version historically, clears canonical production completion/readiness fields, and requires a newly completed active version.
 
 ## Derived Recommendations
 

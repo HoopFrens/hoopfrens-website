@@ -88,7 +88,7 @@ export const founderDailyBriefService = {
     const sinceLastVisit = executiveTimelineService.since(events, lastVisitAt).slice(0, maximumActivityItems);
     const completedWorkCutoff = new Date(now.getTime() - 7 * millisecondsPerDay).toISOString();
     const recentlyCompletedWork = executiveTimelineService
-      .completedSince(events, completedWorkCutoff)
+      .completedSince(events, completedWorkCutoff, projects)
       .slice(0, maximumActivityItems);
     const recommendationResult = executiveRecommendationService.rank(projects, events, now);
     const firstAction = recommendedAction(recommendationResult.topRecommendation);

@@ -25,6 +25,6 @@ Foundation boundaries:
 - `docs/` contains architecture and operating notes.
 - `tests/` is reserved for test coverage added with production behavior.
 
-Current service modules are stubs only. They do not call AI providers, Firestore, Firebase Storage, or public APIs.
+Current Headquarters services are deterministic and do not call AI providers, OpenAI, or external APIs. Project, package, timeline, and Founder-visit persistence use protected Firestore repositories.
 
-Repository interfaces are contracts only. Firestore implementations should be added in a later approved pass.
+Repository interfaces have Firestore and in-memory implementations. Canonical project mutations use transactions, optimistic conflict checks, and atomic artifact/event writes. Protected routes require the authenticated Firestore admin role in every environment.

@@ -17,6 +17,8 @@ import {
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { ChevronRight, ImagePlus, Loader2, LogOut, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { adminAuthorizationService } from "@/services";
+import { collectionManagerKey } from "./adminDashboardUtils";
 import { FormEvent, useCallback, useRef, useEffect, useState } from "react";
 
 type AdminStatus = "checking" | "signed-out" | "checking-role" | "admin" | "denied" | "unconfigured";
@@ -196,7 +198,10 @@ export function AdminDashboard() {
     const activeAuth = auth;
     const activeDb = db;
     if (!activeAuth || !activeDb) return;
-    return onAuthStateChanged(activeAuth, async (nextUser) => {
+    let active = true;
+    let authorizationAttempt = 0;
+    const unsubscribe = onAuthStateChanged(activeAuth, async (nextUser) => {
+      const attempt = ++authorizationAttempt;
       setUser(nextUser);
       if (!nextUser) {
         setAuthStatus("signed-out");
@@ -206,12 +211,21 @@ export function AdminDashboard() {
 
       setAuthStatus("checking-role");
       try {
-        const userSnapshot = await getDoc(doc(activeDb, "users", nextUser.uid));
-        setAuthStatus(userSnapshot.exists() && userSnapshot.data().role === "admin" ? "admin" : "denied");
+        const authorization = await adminAuthorizationService.authorize(nextUser, async (uid) => {
+          const userSnapshot = await getDoc(doc(activeDb, "users", uid));
+          return { exists: userSnapshot.exists(), role: userSnapshot.data()?.role };
+        });
+        if (active && attempt === authorizationAttempt) {
+          setAuthStatus(authorization.allowed ? "admin" : "denied");
+        }
       } catch {
-        setAuthStatus("denied");
+        if (active && attempt === authorizationAttempt) setAuthStatus("denied");
       }
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [router]);
 
   if (authStatus === "unconfigured") return <AdminShell><AdminMessage title="Firebase is not configured" body="Add the Firebase environment variables before using the admin dashboard." /></AdminShell>;
@@ -249,7 +263,7 @@ export function AdminDashboard() {
 
         <section className="min-w-0 flex-1">
           {activeSection === "dashboard" ? <DashboardHome /> : null}
-          {activeConfig ? <CollectionManager config={activeConfig} /> : null}
+          {activeConfig ? <CollectionManager key={collectionManagerKey(activeConfig.collectionName)} config={activeConfig} /> : null}
         </section>
       </div>
     </div>

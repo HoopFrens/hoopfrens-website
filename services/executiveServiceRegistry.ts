@@ -65,5 +65,5 @@ export function createExecutiveServiceRegistry({
     .register(new OutlineService(projectRepository, researchPackageRepository, outlinePackageRepository))
     .register(new ProductionService(projectRepository, outlinePackageRepository, productionPackageRepository))
     .register(new ReviewService())
-    .register(new PublishingService());
+    .register(new PublishingService(projectRepository));
 }

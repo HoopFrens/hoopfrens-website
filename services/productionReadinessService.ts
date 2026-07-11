@@ -35,6 +35,21 @@ export const productionReadinessService = {
       };
     }
 
+    if (
+      productionPackage.active === false ||
+      !project.productionCompletedAt ||
+      (project.activeProductionVersion !== undefined &&
+        project.activeProductionVersion !== null &&
+        project.activeProductionVersion !== productionPackage.version)
+    ) {
+      return {
+        status: ProductionReadinessStatus.NeedsProduction,
+        reasons: ["Production readiness must be recalculated from a new active Production Package."],
+        missingRequirements: ["Active Production Package"],
+        checkedAt: now.toISOString(),
+      };
+    }
+
     const missingRequirements = [
       ...(!productionPackage.workingDraft.trim() ? ["Working Draft"] : []),
       ...incompleteRequiredItems(productionPackage.productionChecklist),

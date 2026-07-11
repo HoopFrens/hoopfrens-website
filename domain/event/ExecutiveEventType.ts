@@ -5,6 +5,7 @@ export enum ExecutiveEventType {
   ResearchCompleted = "research-completed",
   OutlineCompleted = "outline-completed",
   ProductionCompleted = "production-completed",
+  RevisionRequested = "revision-requested",
   ReviewRequested = "review-requested",
   ApprovalCompleted = "approval-completed",
   PublishingCompleted = "publishing-completed",

@@ -207,6 +207,59 @@ test("deduplicates service activity and retains completed work", () => {
   assert.equal(brief.recentlyCompletedWork[0]?.projectId, project.id);
 });
 
+test("includes only the current Production completion and removes it after revision invalidates readiness", () => {
+  const completionAt = "2026-07-09T15:30:00.000Z";
+  const project = createProject("production-complete", {
+    state: ProjectStatus.Production,
+    status: ProjectStatus.Production,
+    currentWorkspace: ProjectWorkspace.ProductionStudio,
+    productionCompletedAt: completionAt,
+    activeProductionVersion: 2,
+    completedSoFar: ["Production package generated"],
+    updatedAt: completionAt,
+  });
+  const productionEvent = createProjectHistoryEvents(project).find(
+    (event) => event.eventType === ExecutiveEventType.ProductionCompleted,
+  );
+  assert.ok(productionEvent);
+  const duplicateEvents = [
+    productionEvent,
+    { ...productionEvent, id: `${productionEvent.id}-retry` },
+    { ...productionEvent, id: `${productionEvent.id}-old`, timestamp: "2026-07-09T14:30:00.000Z" },
+  ];
+
+  const completed = founderDailyBriefService.generate([project], duplicateEvents, null, now);
+  assert.equal(completed.recentlyCompletedWork.length, 1);
+  assert.equal(completed.recentlyCompletedWork[0]?.eventType, ExecutiveEventType.ProductionCompleted);
+
+  const revisedProject = {
+    ...project,
+    productionCompletedAt: null,
+    activeProductionVersion: null,
+    completedSoFar: ["Founder revision requested"],
+  };
+  const revised = founderDailyBriefService.generate([revisedProject], duplicateEvents, null, now);
+  assert.equal(revised.recentlyCompletedWork.some((event) => event.eventType === ExecutiveEventType.ProductionCompleted), false);
+});
+
+test("approved canonical state is publishing work, not a pending review, despite older Production events", () => {
+  const completionAt = "2026-07-09T15:30:00.000Z";
+  const approved = createProject("approved-with-production", {
+    state: ProjectStatus.Approved,
+    status: ProjectStatus.Approved,
+    currentWorkspace: ProjectWorkspace.ExecutiveOffice,
+    productionCompletedAt: completionAt,
+    completedSoFar: ["Production package generated", "Founder approval complete"],
+    updatedAt: "2026-07-09T15:45:00.000Z",
+  });
+  const events = createProjectHistoryEvents(approved);
+  const brief = founderDailyBriefService.generate([approved], events, null, now);
+  const health = new Map(brief.companyHealth.map((item) => [item.label, item.status]));
+
+  assert.equal(health.get("Reviews"), "Green");
+  assert.equal(health.get("Publishing"), "Yellow");
+});
+
 test("changes the workload label from Light to Moderate to Heavy", () => {
   const reviewProject = (index: number) =>
     createProject(`review-${index}`, {

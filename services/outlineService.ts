@@ -85,10 +85,11 @@ export class OutlineService implements ExecutiveService {
     const now = new Date().toISOString();
     const existingPackage = await this.outlinePackageRepository.getByProjectId(project.id);
     const outlinePackage = createOutlinePackage(project, researchPackage.id, now, existingPackage);
-    await this.outlinePackageRepository.save(outlinePackage);
-    const updatedProject = await this.projectRepository.update(
+    const updatedProject = await this.projectRepository.updateWithArtifacts(
       project.id,
       projectWorkflowService.createUpdate(project, "complete-outline", now),
+      [outlinePackage],
+      { expectedUpdatedAt: project.updatedAt },
     );
 
     return {

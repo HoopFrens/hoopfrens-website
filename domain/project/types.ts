@@ -51,7 +51,7 @@ export interface ProjectState {
   currentStep: string;
   recommendedNextAction: string;
   lastActivity: string;
-  productionCompletedAt?: ISODateString;
+  productionCompletedAt?: ISODateString | null;
 }
 
 export interface Project extends ProjectState {
@@ -71,4 +71,8 @@ export interface Project extends ProjectState {
   remainingNextStep?: string;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+  version?: number;
+  creationRequestId?: string;
+  activeProductionVersion?: number | null;
+  productionReadinessInvalidatedAt?: ISODateString | null;
 }

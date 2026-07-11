@@ -27,15 +27,15 @@ function createProductionPackage(
   project: Project,
   outlinePackageId: string,
   createdAt: string,
-  existingPackage: ProductionPackage | null,
+  latestPackage: ProductionPackage | null,
 ): ProductionPackage {
   return {
-    id: `production_${project.id}`,
+    id: `production_${project.id}_v${(latestPackage?.version || 0) + 1}`,
     projectId: project.id,
     artifactType: ArtifactType.ProductionPackage,
-    version: (existingPackage?.version || 0) + 1,
+    version: (latestPackage?.version || 0) + 1,
     status: ArtifactStatus.Ready,
-    createdAt: existingPackage?.createdAt || createdAt,
+    createdAt,
     updatedAt: createdAt,
     createdBy: project.ownerId,
     workspace: ProjectWorkspace.ProductionStudio,
@@ -85,6 +85,7 @@ function createProductionPackage(
       "Review formatting and accessibility",
     ]),
     nextRecommendedStep: "Begin Founder Review.",
+    active: true,
   };
 }
 
@@ -104,12 +105,19 @@ export class ProductionService implements ExecutiveService {
     }
 
     const now = new Date().toISOString();
-    const existingPackage = await this.productionPackageRepository.getByProjectId(project.id);
-    const productionPackage = createProductionPackage(project, outlinePackage.id, now, existingPackage);
-    await this.productionPackageRepository.save(productionPackage);
-    const updatedProject = await this.projectRepository.update(
+    const latestPackage = await this.productionPackageRepository.getLatestByProjectId(project.id);
+    const productionPackage = createProductionPackage(project, outlinePackage.id, now, latestPackage);
+    const supersededPackage = latestPackage && latestPackage.active !== false
+      ? { ...latestPackage, active: false, supersededAt: now, updatedAt: now }
+      : null;
+    const updatedProject = await this.projectRepository.updateWithArtifacts(
       project.id,
-      projectWorkflowService.createUpdate(project, "complete-production", now),
+      {
+        ...projectWorkflowService.createUpdate(project, "complete-production", now),
+        activeProductionVersion: productionPackage.version,
+      },
+      supersededPackage ? [supersededPackage, productionPackage] : [productionPackage],
+      { expectedUpdatedAt: project.updatedAt },
     );
 
     return {

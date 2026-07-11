@@ -22,11 +22,11 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | Release | Status | Current outcome |
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
-| Release 2 | In review | EO-025 through EO-045 are approved and complete in engineering; authenticated Founder validation remains before merge. |
+| Release 2 | Formal re-review | Release 2.4 hardening remediation is implemented with regression coverage; authenticated admin/non-admin validation and formal re-review remain before merge. |
 | Release 3 | Planned | Knowledge operations and source-aware intelligence foundation. |
 | Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
 
-The current development focus is Release 2.4 pull-request review and authenticated Founder validation. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
+The current development focus is Release 2.4 formal re-review and authenticated authorization validation. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
 
 ## 4. Release 1 - Completed
 
@@ -77,7 +77,7 @@ Release 2 makes Headquarters persistent and state-aware.
 | EO-044 | Production Workflow Integration | Approved and complete |
 | EO-045 | Production Readiness Engine | Approved and complete |
 
-EO-025 through EO-045 are approved and complete for the Release 2.4 commit. Authenticated Founder validation and pull-request review remain required before merge.
+EO-025 through EO-045 are approved and complete for Release 2.4. The hardening pass adds production admin authorization, explicit non-creating command handlers, centralized lifecycle enforcement, revision invalidation, concurrency protection, atomic artifact/project persistence, canonical-state briefing fixes, duplicate-submit protection, and regression tests. Authenticated admin/non-admin validation and formal re-review remain required before merge.
 
 ## 6. Release 3 - Planned
 
@@ -148,7 +148,7 @@ The canonical lifecycle is:
 
 Projects track state, progress, priority, ownership, optional due date, dependencies, blockers, current step, recommended next action, last activity, current workspace, and workspace history.
 
-State changes are explicit and deterministic. Review and approval are separate states, and Founder approval is required before work moves beyond the approval boundary.
+State changes are explicit and deterministic through one shared lifecycle policy. Production readiness is required before Review; Review may return to Production only through the revision path, which invalidates stale readiness and supersedes the prior Production Package. Review and approval are separate states, and Founder approval is required before work moves beyond the approval boundary.
 
 ## 11. Success Metrics
 

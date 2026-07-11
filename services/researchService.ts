@@ -75,10 +75,11 @@ export class ResearchService implements ExecutiveService {
     const now = new Date().toISOString();
     const existingPackage = await this.researchPackageRepository.getByProjectId(project.id);
     const researchPackage = createResearchPackage(project, now, existingPackage);
-    await this.researchPackageRepository.save(researchPackage);
-    const updatedProject = await this.projectRepository.update(
+    const updatedProject = await this.projectRepository.updateWithArtifacts(
       project.id,
       projectWorkflowService.createUpdate(project, "complete-research", now),
+      [researchPackage],
+      { expectedUpdatedAt: project.updatedAt },
     );
 
     return {
