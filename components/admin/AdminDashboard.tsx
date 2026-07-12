@@ -15,9 +15,12 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { ChevronRight, ImagePlus, Loader2, LogOut, ShieldAlert } from "lucide-react";
+import { ChevronRight, ImagePlus, Loader2, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { adminAuthorizationService } from "@/services";
+import { collectionManagerKey } from "./adminDashboardUtils";
+import { AccessRestricted } from "./AccessRestricted";
+import { FormEvent, useCallback, useRef, useEffect, useState } from "react";
 
 type AdminStatus = "checking" | "signed-out" | "checking-role" | "admin" | "denied" | "unconfigured";
 type FieldType = "text" | "textarea" | "number" | "checkbox" | "date" | "tags" | "image";
@@ -169,6 +172,15 @@ function fieldValueToString(value: unknown) {
   return "";
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function parseValue(field: FieldConfig, formData: FormData) {
   if (field.type === "checkbox") return formData.get(field.name) === "on";
   const rawValue = String(formData.get(field.name) || "").trim();
@@ -187,7 +199,10 @@ export function AdminDashboard() {
     const activeAuth = auth;
     const activeDb = db;
     if (!activeAuth || !activeDb) return;
-    return onAuthStateChanged(activeAuth, async (nextUser) => {
+    let active = true;
+    let authorizationAttempt = 0;
+    const unsubscribe = onAuthStateChanged(activeAuth, async (nextUser) => {
+      const attempt = ++authorizationAttempt;
       setUser(nextUser);
       if (!nextUser) {
         setAuthStatus("signed-out");
@@ -197,18 +212,27 @@ export function AdminDashboard() {
 
       setAuthStatus("checking-role");
       try {
-        const userSnapshot = await getDoc(doc(activeDb, "users", nextUser.uid));
-        setAuthStatus(userSnapshot.exists() && userSnapshot.data().role === "admin" ? "admin" : "denied");
+        const authorization = await adminAuthorizationService.authorize(nextUser, async (uid) => {
+          const userSnapshot = await getDoc(doc(activeDb, "users", uid));
+          return { exists: userSnapshot.exists(), role: userSnapshot.data()?.role };
+        });
+        if (active && attempt === authorizationAttempt) {
+          setAuthStatus(authorization.allowed ? "admin" : "denied");
+        }
       } catch {
-        setAuthStatus("denied");
+        if (active && attempt === authorizationAttempt) setAuthStatus("denied");
       }
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [router]);
 
   if (authStatus === "unconfigured") return <AdminShell><AdminMessage title="Firebase is not configured" body="Add the Firebase environment variables before using the admin dashboard." /></AdminShell>;
   if (authStatus === "checking" || authStatus === "checking-role") return <AdminShell><AdminLoading label={authStatus === "checking-role" ? "Checking admin access" : "Checking session"} /></AdminShell>;
   if (authStatus === "signed-out") return <AdminShell><AdminLoading label="Redirecting to login" /></AdminShell>;
-  if (authStatus === "denied") return <AdminShell><AccessDenied user={user} /></AdminShell>;
+  if (authStatus === "denied") return <AdminShell><AccessRestricted /></AdminShell>;
 
   const activeConfig = editableConfigs.find((config) => config.key === activeSection);
 
@@ -240,7 +264,7 @@ export function AdminDashboard() {
 
         <section className="min-w-0 flex-1">
           {activeSection === "dashboard" ? <DashboardHome /> : null}
-          {activeConfig ? <CollectionManager config={activeConfig} /> : null}
+          {activeConfig ? <CollectionManager key={collectionManagerKey(activeConfig.collectionName)} config={activeConfig} /> : null}
         </section>
       </div>
     </div>
@@ -257,16 +281,6 @@ function AdminLoading({ label }: { label: string }) {
 
 function AdminMessage({ title, body }: { title: string; body: string }) {
   return <div className="mx-auto max-w-xl border border-white/10 bg-black p-8"><h1 className="text-3xl font-black uppercase">{title}</h1><p className="mt-4 leading-7 text-zinc-400">{body}</p></div>;
-}
-
-function AccessDenied({ user }: { user: User | null }) {
-  return (
-    <div className="mx-auto max-w-xl border border-red-600/40 bg-black p-8">
-      <ShieldAlert className="text-red-500" size={34} />
-      <h1 className="mt-4 text-4xl font-black uppercase">Access denied.</h1>
-      <p className="mt-4 leading-7 text-zinc-400">{user?.email || "This user"} is authenticated but does not have an admin role.</p>
-    </div>
-  );
 }
 
 function DashboardHome() {
@@ -313,9 +327,12 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 function CollectionManager({ config }: { config: CollectionConfig }) {
   const [items, setItems] = useState<AdminDoc[]>([]);
   const [editingItem, setEditingItem] = useState<AdminDoc | null>(null);
+  const slugManuallyEdited = useRef(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const hasSlugField = config.fields.some((field) => field.name === "slug");
+  const slugSourceField = config.fields.find((field) => field.name === "title")?.name || config.fields.find((field) => field.name === "name")?.name;
 
   const loadItems = useCallback(async () => {
     const activeDb = db;
@@ -332,6 +349,21 @@ function CollectionManager({ config }: { config: CollectionConfig }) {
       setLoading(false);
     });
   }, [loadItems]);
+
+  function handleFormInput(event: FormEvent<HTMLFormElement>) {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (!hasSlugField || !slugSourceField) return;
+
+    if (target.name === "slug") {
+      slugManuallyEdited.current = true;
+      return;
+    }
+
+    if (target.name !== slugSourceField || slugManuallyEdited.current) return;
+
+    const slugInput = event.currentTarget.elements.namedItem("slug") as HTMLInputElement | null;
+    if (slugInput) slugInput.value = slugify(target.value);
+  }
 
   async function saveItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -362,6 +394,7 @@ function CollectionManager({ config }: { config: CollectionConfig }) {
       }
       form.reset();
       setEditingItem(null);
+      slugManuallyEdited.current = false;
       await loadItems();
     } catch {
       setMessage("Could not save this item.");
@@ -392,7 +425,7 @@ function CollectionManager({ config }: { config: CollectionConfig }) {
                   <p className="mt-2 text-sm text-zinc-500">{config.previewFields.map((field) => fieldValueToString(item[field])).filter(Boolean).join(" / ") || item.id}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditingItem(item)} className="rounded-md border border-white/15 px-4 py-2 text-xs font-black uppercase text-white hover:border-red-500">Edit</button>
+                  <button onClick={() => { slugManuallyEdited.current = false; setEditingItem(item); }} className="rounded-md border border-white/15 px-4 py-2 text-xs font-black uppercase text-white hover:border-red-500">Edit</button>
                   <button onClick={() => removeItem(item)} className="rounded-md bg-red-600 px-4 py-2 text-xs font-black uppercase text-white hover:bg-red-500">Delete</button>
                 </div>
               </div>
@@ -400,10 +433,10 @@ function CollectionManager({ config }: { config: CollectionConfig }) {
             {!loading && items.length === 0 ? <p className="p-5 text-sm font-bold text-zinc-500">No records yet.</p> : null}
           </div>
         </div>
-        <form onSubmit={saveItem} className="grid gap-4 border border-white/10 bg-black p-5">
+        <form onSubmit={saveItem} onInput={handleFormInput} className="grid gap-4 border border-white/10 bg-black p-5">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-black uppercase">{editingItem ? "Edit item" : "New item"}</h3>
-            {editingItem ? <button type="button" onClick={() => setEditingItem(null)} className="text-xs font-black uppercase text-zinc-400 hover:text-white">Clear</button> : null}
+            {editingItem ? <button type="button" onClick={() => { slugManuallyEdited.current = false; setEditingItem(null); }} className="text-xs font-black uppercase text-zinc-400 hover:text-white">Clear</button> : null}
           </div>
           {config.fields.map((field) => <AdminField key={`${editingItem?.id || "new"}-${field.name}`} field={field} item={editingItem} />)}
           <button disabled={saving} className="rounded-lg bg-red-600 px-5 py-4 text-sm font-black uppercase text-white hover:bg-red-500 disabled:opacity-60">{saving ? "Saving..." : editingItem ? "Update" : "Create"}</button>
