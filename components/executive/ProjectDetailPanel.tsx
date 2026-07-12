@@ -38,9 +38,9 @@ type ProjectDetailPanelProps = {
   onRunResearch(): void;
   onRunOutline(): void;
   onRunProduction(): void;
-  onOpenResearchPackage(): void;
-  onOpenOutlinePackage(): void;
-  onOpenProductionPackage(): void;
+  onOpenResearchPackage(trigger: HTMLButtonElement): void;
+  onOpenOutlinePackage(trigger: HTMLButtonElement): void;
+  onOpenProductionPackage(trigger: HTMLButtonElement): void;
   onClose(): void;
 };
 
@@ -243,7 +243,7 @@ export function ProjectDetailPanel({
             ) : null}
             <button
               type="button"
-              onClick={onOpenResearchPackage}
+              onClick={(event) => onOpenResearchPackage(event.currentTarget)}
               disabled={researchPackageLoading}
               className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -252,7 +252,7 @@ export function ProjectDetailPanel({
             </button>
             <button
               type="button"
-              onClick={onOpenOutlinePackage}
+              onClick={(event) => onOpenOutlinePackage(event.currentTarget)}
               disabled={outlinePackageLoading}
               className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -261,7 +261,7 @@ export function ProjectDetailPanel({
             </button>
             <button
               type="button"
-              onClick={onOpenProductionPackage}
+              onClick={(event) => onOpenProductionPackage(event.currentTarget)}
               disabled={productionPackageLoading}
               className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >

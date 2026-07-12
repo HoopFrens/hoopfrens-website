@@ -5,6 +5,7 @@ import {
   isPackageOverlayDismissKey,
   overlayFocusWrapIndex,
   PackageOverlayFrame,
+  resolvePackageOverlayReturnFocus,
 } from "@/components/executive/PackageOverlay";
 import { ProductionPackagePanel } from "@/components/executive/ProductionPackagePanel";
 import { ProjectDetailPanel } from "@/components/executive/ProjectDetailPanel";
@@ -273,6 +274,18 @@ test("package overlay Escape and Tab contracts close and trap focus", () => {
   assert.equal(overlayFocusWrapIndex(2, 3, false), 0);
   assert.equal(overlayFocusWrapIndex(0, 3, true), 2);
   assert.equal(overlayFocusWrapIndex(1, 3, false), null);
+
+  const trigger = { id: "trigger", isConnected: true };
+  const previous = { id: "previous", isConnected: true };
+  assert.equal(resolvePackageOverlayReturnFocus(trigger, previous), trigger);
+  assert.equal(resolvePackageOverlayReturnFocus({ ...trigger, isConnected: false }, previous), previous);
+  assert.equal(
+    resolvePackageOverlayReturnFocus(
+      { ...trigger, isConnected: false },
+      { ...previous, isConnected: false },
+    ),
+    null,
+  );
 });
 
 test("legacy artifact warnings identify missing project-owned packages without substitution", () => {

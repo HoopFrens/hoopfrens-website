@@ -2,7 +2,15 @@
 
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useEffect, useId, useRef, useSyncExternalStore, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useSyncExternalStore,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 export type PackageOverlayMetadata = {
   label: string;
@@ -21,7 +29,9 @@ type PackageOverlayFrameProps = {
   children?: ReactNode;
 };
 
-type PackageOverlayProps = Omit<PackageOverlayFrameProps, "titleId" | "closeButtonRef" | "onBackdropMouseDown">;
+type PackageOverlayProps = Omit<PackageOverlayFrameProps, "titleId" | "closeButtonRef" | "onBackdropMouseDown"> & {
+  returnFocusRef?: RefObject<HTMLElement | null>;
+};
 
 const focusableSelector = [
   "button:not([disabled])",
@@ -43,6 +53,15 @@ export function overlayFocusWrapIndex(currentIndex: number, focusableCount: numb
 
 export function isPackageOverlayDismissKey(key: string) {
   return key === "Escape";
+}
+
+export function resolvePackageOverlayReturnFocus<T extends { isConnected: boolean }>(
+  returnFocusTarget: T | null | undefined,
+  previouslyFocused: T | null,
+) {
+  if (returnFocusTarget?.isConnected) return returnFocusTarget;
+  if (previouslyFocused?.isConnected) return previouslyFocused;
+  return null;
 }
 
 export function PackageOverlayFrame({
@@ -106,12 +125,23 @@ export function PackageOverlayFrame({
   );
 }
 
-export function PackageOverlay({ title, projectTitle, status, metadata, onClose, children }: PackageOverlayProps) {
+export function PackageOverlay({
+  title,
+  projectTitle,
+  status,
+  metadata,
+  returnFocusRef,
+  onClose,
+  children,
+}: PackageOverlayProps) {
   const mounted = useSyncExternalStore(subscribeToClientEnvironment, () => true, () => false);
   const titleId = useId();
   const dialogRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const environmentCapturedRef = useRef(false);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const previousBodyOverflowRef = useRef("");
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -120,8 +150,13 @@ export function PackageOverlay({ title, projectTitle, status, metadata, onClose,
   useEffect(() => {
     if (!mounted) return;
 
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
+    if (!environmentCapturedRef.current) {
+      environmentCapturedRef.current = true;
+      previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previousBodyOverflowRef.current = document.body.style.overflow;
+    }
+
+    const returnFocusTarget = returnFocusRef?.current;
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
 
@@ -147,10 +182,11 @@ export function PackageOverlay({ title, projectTitle, status, metadata, onClose,
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
+      document.body.style.overflow = previousBodyOverflowRef.current;
+
+      resolvePackageOverlayReturnFocus(returnFocusTarget, previouslyFocusedRef.current)?.focus();
     };
-  }, [mounted]);
+  }, [mounted, returnFocusRef]);
 
   if (!mounted) return null;
 

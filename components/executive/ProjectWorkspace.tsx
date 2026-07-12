@@ -164,6 +164,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   const [actionMessage, setActionMessage] = useState("");
   const [servicePending, setServicePending] = useState(false);
   const [activePackageView, setActivePackageView] = useState<ActivePackageView>(null);
+  const packageTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [researchPackageState, setResearchPackageState] = useState<ProjectScopedArtifact<ResearchPackage> | null>(null);
   const [researchPackageLoading, setResearchPackageLoading] = useState(false);
   const [researchPackageMessage, setResearchPackageMessage] = useState("");
@@ -366,6 +367,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   }, [outlinePackageRepository, productionPackageRepository, researchPackageRepository, selectedProjectId]);
 
   function selectProject(projectId: string) {
+    packageTriggerRef.current = null;
     selectedProjectIdRef.current = projectId;
     setSelectedProjectId(projectId);
     setActionMessage("");
@@ -382,6 +384,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
   }
 
   function closeProject() {
+    packageTriggerRef.current = null;
     selectedProjectIdRef.current = null;
     setSelectedProjectId(null);
     setActionMessage("");
@@ -540,10 +543,11 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
     return handleRunExecutiveService(ExecutiveServiceType.Production);
   }
 
-  async function handleOpenResearchPackage() {
+  async function handleOpenResearchPackage(trigger: HTMLButtonElement) {
     if (!selectedProject || !researchPackageRepository) return;
     const projectId = selectedProject.id;
 
+    packageTriggerRef.current = trigger;
     setActivePackageView("research");
     setResearchPackageLoading(true);
     setResearchPackageMessage("");
@@ -562,10 +566,11 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
     }
   }
 
-  async function handleOpenOutlinePackage() {
+  async function handleOpenOutlinePackage(trigger: HTMLButtonElement) {
     if (!selectedProject || !outlinePackageRepository) return;
     const projectId = selectedProject.id;
 
+    packageTriggerRef.current = trigger;
     setActivePackageView("outline");
     setOutlinePackageLoading(true);
     setOutlinePackageMessage("");
@@ -584,10 +589,11 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
     }
   }
 
-  async function handleOpenProductionPackage() {
+  async function handleOpenProductionPackage(trigger: HTMLButtonElement) {
     if (!selectedProject || !productionPackageRepository) return;
     const projectId = selectedProject.id;
 
+    packageTriggerRef.current = trigger;
     setActivePackageView("production");
     setProductionPackageLoading(true);
     setProductionPackageMessage("");
@@ -830,9 +836,9 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
               onRunResearch={() => void handleRunResearch()}
               onRunOutline={() => void handleRunOutline()}
               onRunProduction={() => void handleRunProduction()}
-              onOpenResearchPackage={() => void handleOpenResearchPackage()}
-              onOpenOutlinePackage={() => void handleOpenOutlinePackage()}
-              onOpenProductionPackage={() => void handleOpenProductionPackage()}
+              onOpenResearchPackage={(trigger) => void handleOpenResearchPackage(trigger)}
+              onOpenOutlinePackage={(trigger) => void handleOpenOutlinePackage(trigger)}
+              onOpenProductionPackage={(trigger) => void handleOpenProductionPackage(trigger)}
               onClose={closeProject}
             />
           ) : null}
@@ -844,6 +850,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
           projectTitle={selectedProject.title}
           status={activePackageLoading ? "Loading" : formatPackageStatus(activePackage?.status)}
           metadata={activePackageMetadata}
+          returnFocusRef={packageTriggerRef}
           onClose={() => setActivePackageView(null)}
         >
           {activePackageView === "research" ? (
