@@ -23,10 +23,10 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
 | Release 2 | Released | Release 2.4 is released. Founder validation is complete, the final Release Gate is approved with minor follow-up, and EO-025 through EO-045 are complete. |
-| Release 3 | Planned | Knowledge operations and source-aware intelligence foundation. |
+| Release 3 | Planning | Executive Reasoning architecture and governance planning; implementation has not started. |
 | Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
 
-Release 2.4 is complete. Release 3 remains planned and no Release 3 implementation has started. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
+Release 2.4 is complete. Release 3 is in planning and no Release 3 implementation has started. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
 
 ## 4. Release 1 - Completed
 
@@ -95,9 +95,15 @@ EO-025 through EO-045 are complete for Release 2.4. The hardening pass adds prod
 
 Release 2.4 implements concrete Research, Outline, and Production Packages only. Review and Publishing remain reserved artifact types; concrete Review or Publishing package models, repositories, and viewers are not part of this release.
 
-## 6. Release 3 - Planned
+## 6. Release 3 - Planning
 
-Release 3 is the Knowledge Operations phase. Its direction is to make basketball intelligence durable, source-aware, and connected to projects.
+Release 3 is the Executive Reasoning planning phase. Its Knowledge Operations direction remains to make basketball intelligence durable, source-aware, and connected to projects; implementation remains subject to the approved architecture and capability sequence.
+
+### Release 3 Planning Status
+
+- **Release 3:** Planning
+- **Release 3.1:** Awaiting Founder architecture approval
+- **Implementation:** Not started
 
 Planned outcomes:
 
