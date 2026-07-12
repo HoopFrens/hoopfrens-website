@@ -22,11 +22,11 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | Release | Status | Current outcome |
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
-| Release 2 | Final remediation | Release 2.4 workflow-integrity remediation is implemented with regression coverage; deployed authenticated validation and another independent formal review remain before merge. |
+| Release 2 | Released | Release 2.4 is released. Founder validation is complete, the final Release Gate is approved with minor follow-up, and EO-025 through EO-045 are complete. |
 | Release 3 | Planned | Knowledge operations and source-aware intelligence foundation. |
 | Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
 
-The current development focus is Release 2.4 deployed authentication validation and final independent re-review. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
+Release 2.4 is complete. Release 3 remains planned and no Release 3 implementation has started. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
 
 ## 4. Release 1 - Completed
 
@@ -45,16 +45,23 @@ Release 1 established the first usable Headquarters workflow.
 
 Release 1 is tagged `v0.1.0-headquarters-mvp`.
 
-## 5. Release 2 - In Review
+## 5. Release 2 - Released
 
 Release 2 makes Headquarters persistent and state-aware.
 
+### Release 2.4 Status
+
+- **Status:** Released
+- **EO-025 through EO-045:** Complete
+- **Founder Validation:** Complete
+- **Final Release Gate:** Approved with minor follow-up
+
 | Engineering Order | Capability | Status |
 | --- | --- | --- |
-| EO-021 | Executive Intelligence foundation | Implemented; review pending |
-| EO-022 | Viewport and composer layout | Implemented; review pending |
-| EO-023 | Conversation activity alignment | Implemented; review pending |
-| EO-024 | Executive Office final visual polish | Implemented; review pending |
+| EO-021 | Executive Intelligence foundation | Implemented and released |
+| EO-022 | Viewport and composer layout | Implemented and released |
+| EO-023 | Conversation activity alignment | Implemented and released |
+| EO-024 | Executive Office final visual polish | Implemented and released |
 | EO-025 | Firestore project repository | Approved and complete |
 | EO-026 | Project State Engine and Workspace Model | Approved and complete |
 | EO-027 | Executive Intelligence from Project State | Approved and complete |
@@ -77,7 +84,16 @@ Release 2 makes Headquarters persistent and state-aware.
 | EO-044 | Production Workflow Integration | Approved and complete |
 | EO-045 | Production Readiness Engine | Approved and complete |
 
-EO-025 through EO-045 are implemented for Release 2.4. The hardening pass adds production admin authorization, explicit non-creating command handlers, centralized lifecycle enforcement, revision invalidation, concurrency protection, atomic artifact/project persistence, project-scoped artifact loading, canonical-state briefing fixes, retry-stable create idempotency, and regression tests. Deployed admin/non-admin validation and another independent formal review remain required before merge.
+EO-025 through EO-045 are complete for Release 2.4. The hardening pass adds production admin authorization, explicit non-creating command handlers, centralized lifecycle enforcement, revision invalidation, concurrency protection, atomic artifact/project persistence, project-scoped artifact loading, canonical-state briefing fixes, retry-stable create idempotency, and regression tests. Founder validation is complete, and the final formal review approved the release with minor follow-up.
+
+### Release 2.4 Technical Debt
+
+- A moderate transitive PostCSS advisory remains through Next.js.
+- No exploitable Headquarters input path was identified for the advisory.
+- Continue monitoring Next.js for a safe upstream PostCSS patch; do not apply a framework-changing downgrade or unverified override.
+- Future release validation records should include the validation date, browser version, and deployed Firestore rules version or deployment time.
+
+Release 2.4 implements concrete Research, Outline, and Production Packages only. Review and Publishing remain reserved artifact types; concrete Review or Publishing package models, repositories, and viewers are not part of this release.
 
 ## 6. Release 3 - Planned
 

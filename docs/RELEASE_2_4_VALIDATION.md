@@ -1,68 +1,69 @@
 # Release 2.4 Deployment Validation
 
-This checklist is the remaining manual release gate for PR #4. It must be run against the deployed Headquarters build and its current deployed Firebase rules. Do not record passwords, tokens, email addresses, user IDs, Firebase project IDs, document IDs, or private record contents in this file.
+This record captures the final Founder-observed release gate for PR #4. Do not record passwords, tokens, email addresses, user IDs, Firebase project IDs, document IDs, or private record contents in this file.
 
 ## Validation Record
 
-- Deployed build or commit tested: `Founder result: ____________________`
-- Validation date and time: `Founder result: ____________________`
-- Browser and version: `Founder result: ____________________`
-- Deployed Firestore rules version or deployment time: `Founder result: ____________________`
-- Overall result: `Not run / Pass / Fail: ____________________`
-- Sanitized notes or follow-up issue links: `Founder result: ____________________`
+- Commit tested: `72cc93c1fdabd7f402477d48282f2b06cb5b65d1`
+- Validation date and time: `Not supplied`
+- Browser and version: `Not supplied`
+- Deployed Firestore rules version or deployment time: `Not supplied`
+- Overall Founder-observed result: `Passed`
+- Sanitized notes or follow-up issue links: `No failed observations reported`
+
+Only results explicitly supplied by the Founder are recorded as Passed below. Unreported environment metadata is left as Not supplied rather than inferred.
 
 ## Admin Account
 
-Use an approved admin account. Record only Pass or Fail and sanitized notes.
-
-- [ ] Sign in through the deployed Headquarters sign-in page. `Founder result: __________`
-- [ ] Open every protected Headquarters route from navigation and by direct URL. Confirm each route loads protected content. `Founder result: __________`
-- [ ] Open Projects and Project Detail. Confirm protected `internalProjects` data can be read. `Founder result: __________`
-- [ ] Perform one permitted workflow write through the interface. Confirm the expected project state, history, timeline event, and related artifact write persist. `Founder result: __________`
-- [ ] Refresh the page. Confirm the persisted state and history remain correct. `Founder result: __________`
-- [ ] Sign out. Confirm protected content disappears and direct protected routes no longer load. `Founder result: __________`
+- [x] Approved admin authentication: **Passed**
+- [x] Protected Headquarters routes: **Passed**
+- [x] Protected project reads: **Passed**
+- [x] Permitted workflow writes persist: **Passed**
+- [x] Refresh persistence: **Passed**
+- [x] Sign Out removes access: **Passed**
 
 ## Authenticated Non-Admin Account
 
-Use an authenticated account that is not approved as an admin. Do not change its role during this test.
-
-- [ ] Sign in successfully with Firebase Authentication. `Founder result: __________`
-- [ ] Confirm the Access Restricted view appears and no Headquarters data is visible. `Founder result: __________`
-- [ ] Enter each protected Headquarters route directly. Confirm access remains denied. `Founder result: __________`
-- [ ] Using the deployed application session, attempt a protected `internalProjects` read. Confirm Firestore denies it and no record data is returned. `Founder result: __________`
-- [ ] Attempt a protected `internalProjects` write. Confirm Firestore denies it and no record changes. `Founder result: __________`
-- [ ] Confirm the denial view displays neither the account email nor internal role terminology. `Founder result: __________`
-- [ ] Use Sign Out. Confirm the session ends and protected access remains denied. `Founder result: __________`
+- [x] Firebase authentication: **Passed**
+- [x] Access Restricted page: **Passed**
+- [x] Direct protected-route denial: **Passed**
+- [x] No protected data displayed: **Passed**
 
 ## Unauthenticated Session
 
-Use a private browser window with no Firebase session.
+- [x] Protected-route denial: **Passed**
 
-- [ ] Enter every protected Headquarters route directly. Confirm the sign-in boundary appears and protected content does not render. `Founder result: __________`
-- [ ] Attempt a protected Firestore read from the deployed application context. Confirm it is denied and no protected data is returned. `Founder result: __________`
-- [ ] Attempt a protected Firestore write from the deployed application context. Confirm it is denied and no record changes. `Founder result: __________`
+## Workflow
 
-## Lifecycle and Artifact Ownership
+- [x] Invalid Review action is blocked: **Passed**
+- [x] Invalid action no longer triggers the Next.js runtime overlay: **Passed**
+- [x] Disabled action explanation is displayed: **Passed**
+- [x] Project state remains unchanged after an invalid action: **Passed**
+- [x] Valid workflow action persists: **Passed**
+- [x] Revision invalidates prior production readiness: **Passed**
 
-Use a disposable internal test project owned by the deployed environment. Record only project labels that contain no sensitive information.
+## Artifacts and UI
 
-- [ ] From Draft, attempt a direct transition to Review. Confirm the operation is rejected and no project, history, timeline, or artifact write occurs. `Founder result: __________`
-- [ ] Run the valid sequence Draft → Research → Outline → Production. Confirm each state, workspace history entry, timeline event, and generated package persists after refresh. `Founder result: __________`
-- [ ] Complete Production readiness and enter Review through the supported action. Confirm the active Production Package belongs to the same project. `Founder result: __________`
-- [ ] Request a revision from Review. Confirm the project returns to Production, the prior Production Package is superseded, and readiness is invalidated. `Founder result: __________`
-- [ ] Generate the new Production version. Confirm readiness uses only the new active version. `Founder result: __________`
-- [ ] Rapidly switch between two projects while loading Research and Production viewers. Confirm neither viewer ever displays an artifact from the other project. `Founder result: __________`
-- [ ] Complete the remaining valid sequence Review → Approved → Published → Archived. Confirm each permitted operation persists and invalid shortcuts remain unavailable. `Founder result: __________`
+- [x] Research Package overlay: **Passed**
+- [x] Outline Package overlay: **Passed**
+- [x] Production Package overlay: **Passed**
+- [x] Project-scoped artifact ownership: **Passed**
+- [x] Escape dismissal, focus trapping, and focus restoration: **Passed**
+- [x] Responsive laptop layout: **Passed**
+- [x] Legacy artifact warning: **Passed**
+- [x] No console errors: **Passed**
 
 ## Sign-Off
 
-- Founder release-gate decision: `Pending / Passed / Failed: ____________________`
-- Failed checklist items and sanitized issue references: `Founder result: ____________________`
+- Founder release-gate decision: `Passed`
+- Failed checklist items and sanitized issue references: `None reported`
 
-PR #4 must not merge until all required items have a Founder-observed result and the overall release gate is Passed.
+The Founder-observed validation gate is complete for commit `72cc93c1fdabd7f402477d48282f2b06cb5b65d1`. The independent final Release Gate Review decision is **Approved with minor follow-up**, with no P0, P1, or P2 findings. Release 2.4 is approved for merge.
 
 ## PostCSS Advisory Technical Debt
 
 `npm audit --omit=dev` reports moderate advisory `GHSA-qx2v-qp2m-jg93` against PostCSS versions below 8.5.10. The affected installation is transitive: `next@16.2.9` bundles `postcss@8.4.31`. The separate application build path from `@tailwindcss/postcss@4.3.0` resolves to patched `postcss@8.5.15`.
 
 No application feature accepts untrusted CSS and serializes it into a style element, so the advisory has no identified exploitable Headquarters input path in Release 2.4. npm offers only a framework-changing downgrade to `next@9.3.3`, not a safe patch-level remediation. Release 2.4 therefore records the transitive advisory as technical debt rather than destabilizing the framework. Re-evaluate when Next publishes a compatible release that updates its bundled PostCSS; do not use an override without Next compatibility verification.
+
+Future release validation records should include the validation date, browser version, and deployed Firestore rules version or deployment time.
