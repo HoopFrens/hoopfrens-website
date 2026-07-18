@@ -8,12 +8,1169 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function publishedRead() {
       return resource.data.published == true;
+    }
+
+    function isInternalKnowledgeCollection(collectionName) {
+      return collectionName.matches('internalKnowledge.*');
+    }
+
+    function isIdentifier(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 256
+        && value.matches('[A-Za-z0-9][A-Za-z0-9._-]*');
+    }
+
+    function isNonEmptyString(value) {
+      return value is string && value.size() > 0 && value.size() <= 4096;
+    }
+
+    function optionalString(data, field) {
+      return !(field in data) || data[field] is string;
+    }
+
+    function boundedString(value, maximumSize) {
+      return value is string && value.size() <= maximumSize;
+    }
+
+    function optionalIdentifier(data, field) {
+      return !(field in data) || isIdentifier(data[field]);
+    }
+
+    function validHttpUrl(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 4096
+        && value.matches('https?://.+');
+    }
+
+    function optionalHttpUrl(data, field) {
+      return !(field in data) || validHttpUrl(data[field]);
+    }
+
+    function validStringList(value, maximumSize) {
+      return value is list
+        && value.size() <= maximumSize
+        && value.toSet().size() == value.size();
+    }
+
+    function validIdentifierListItem(value, index) {
+      return value.size() <= index || isIdentifier(value[index]);
+    }
+
+    function validIdentifierList(value, maximumSize) {
+      return validStringList(value, maximumSize)
+        && validIdentifierListItem(value, 0)
+        && validIdentifierListItem(value, 1)
+        && validIdentifierListItem(value, 2)
+        && validIdentifierListItem(value, 3);
+    }
+
+    function validIdentifierListEight(value, maximumSize) {
+      return validIdentifierList(value, maximumSize)
+        && validIdentifierListItem(value, 4)
+        && validIdentifierListItem(value, 5)
+        && validIdentifierListItem(value, 6)
+        && validIdentifierListItem(value, 7);
+    }
+
+    function validTextListItem(value, index) {
+      return value.size() <= index || isNonEmptyString(value[index]);
+    }
+
+    function validSmallTextList(value, maximumSize) {
+      return validStringList(value, maximumSize)
+        && validTextListItem(value, 0)
+        && validTextListItem(value, 1)
+        && validTextListItem(value, 2)
+        && validTextListItem(value, 3);
+    }
+
+    function validTextList(value, maximumSize) {
+      return validSmallTextList(value, maximumSize)
+        && validTextListItem(value, 4)
+        && validTextListItem(value, 5)
+        && validTextListItem(value, 6)
+        && validTextListItem(value, 7);
+    }
+
+    function isKnowledgeStatus(value) {
+      return value == 'active' || value == 'archived';
+    }
+
+    function isKnowledgeConfidence(value) {
+      return value == 'verified'
+        || value == 'supported'
+        || value == 'inferred'
+        || value == 'unverified'
+        || value == 'conflicting';
+    }
+
+    function isKnowledgeNodeType(value) {
+      return value == 'school' || value == 'coach' || value == 'conference'
+        || value == 'player' || value == 'facility' || value == 'region'
+        || value == 'state' || value == 'organization' || value == 'project'
+        || value == 'content';
+    }
+
+    function isKnowledgeCategory(value) {
+      return value == 'institution' || value == 'person' || value == 'geography'
+        || value == 'organization' || value == 'work' || value == 'content';
+    }
+
+    function categoryForNodeType(value) {
+      return {
+        'school': 'institution',
+        'coach': 'person',
+        'conference': 'organization',
+        'player': 'person',
+        'facility': 'organization',
+        'region': 'geography',
+        'state': 'geography',
+        'organization': 'organization',
+        'project': 'work',
+        'content': 'content'
+      }.get(value, '');
+    }
+
+    function isKnowledgeRegion(value) {
+      return value in [
+        'northeast', 'mid_atlantic', 'southeast', 'gulf_states',
+        'greater_lakes', 'midwest', 'texas', 'southwest', 'northwest'
+      ];
+    }
+
+    function isApprovedRegionName(value) {
+      return value in [
+        'Northeast', 'Mid-Atlantic', 'Southeast', 'Gulf States',
+        'Greater Lakes', 'Midwest', 'Texas', 'Southwest', 'Northwest',
+        'northeast', 'mid_atlantic', 'southeast', 'gulf_states',
+        'greater_lakes', 'midwest', 'texas', 'southwest', 'northwest'
+      ];
+    }
+
+    function isRelationshipType(value) {
+      return value == 'SCHOOL_BELONGS_TO_CONFERENCE'
+        || value == 'SCHOOL_LOCATED_IN_STATE'
+        || value == 'SCHOOL_LOCATED_IN_REGION'
+        || value == 'SCHOOL_HAS_COACH'
+        || value == 'SCHOOL_HAS_FACILITY'
+        || value == 'PROJECT_ABOUT_SCHOOL'
+        || value == 'CONTENT_ABOUT_SCHOOL'
+        || value == 'COACH_WORKS_AT_SCHOOL'
+        || value == 'CONFERENCE_GOVERNS_SCHOOL'
+        || value == 'PLAYER_CONNECTED_TO_SCHOOL'
+        || value == 'FACILITY_BELONGS_TO_SCHOOL';
+    }
+
+    function isExclusiveRelationshipType(value) {
+      return value in [
+        'SCHOOL_BELONGS_TO_CONFERENCE', 'CONFERENCE_GOVERNS_SCHOOL',
+        'SCHOOL_LOCATED_IN_STATE', 'SCHOOL_LOCATED_IN_REGION',
+        'SCHOOL_HAS_COACH', 'COACH_WORKS_AT_SCHOOL',
+        'SCHOOL_HAS_FACILITY', 'FACILITY_BELONGS_TO_SCHOOL'
+      ];
+    }
+
+    function relationshipFamily(value) {
+      return value in ['SCHOOL_BELONGS_TO_CONFERENCE', 'CONFERENCE_GOVERNS_SCHOOL']
+          ? 'school-conference'
+        : value == 'SCHOOL_LOCATED_IN_STATE' ? 'school-state'
+        : value == 'SCHOOL_LOCATED_IN_REGION' ? 'school-region'
+        : value in ['SCHOOL_HAS_COACH', 'COACH_WORKS_AT_SCHOOL'] ? 'school-coach'
+        : value in ['SCHOOL_HAS_FACILITY', 'FACILITY_BELONGS_TO_SCHOOL'] ? 'school-facility'
+        : value == 'PLAYER_CONNECTED_TO_SCHOOL' ? 'player-school'
+        : value == 'PROJECT_ABOUT_SCHOOL' ? 'project-school'
+        : value == 'CONTENT_ABOUT_SCHOOL' ? 'content-school'
+        : '';
+    }
+
+    function relationshipFromType(value) {
+      return {
+        'SCHOOL_BELONGS_TO_CONFERENCE': 'school',
+        'CONFERENCE_GOVERNS_SCHOOL': 'conference',
+        'SCHOOL_LOCATED_IN_STATE': 'school',
+        'SCHOOL_LOCATED_IN_REGION': 'school',
+        'SCHOOL_HAS_COACH': 'school',
+        'COACH_WORKS_AT_SCHOOL': 'coach',
+        'SCHOOL_HAS_FACILITY': 'school',
+        'FACILITY_BELONGS_TO_SCHOOL': 'facility',
+        'PROJECT_ABOUT_SCHOOL': 'project',
+        'CONTENT_ABOUT_SCHOOL': 'content',
+        'PLAYER_CONNECTED_TO_SCHOOL': 'player'
+      }.get(value, '');
+    }
+
+    function relationshipToType(value) {
+      return {
+        'SCHOOL_BELONGS_TO_CONFERENCE': 'conference',
+        'CONFERENCE_GOVERNS_SCHOOL': 'school',
+        'SCHOOL_LOCATED_IN_STATE': 'state',
+        'SCHOOL_LOCATED_IN_REGION': 'region',
+        'SCHOOL_HAS_COACH': 'coach',
+        'COACH_WORKS_AT_SCHOOL': 'school',
+        'SCHOOL_HAS_FACILITY': 'facility',
+        'FACILITY_BELONGS_TO_SCHOOL': 'school',
+        'PROJECT_ABOUT_SCHOOL': 'school',
+        'CONTENT_ABOUT_SCHOOL': 'school',
+        'PLAYER_CONNECTED_TO_SCHOOL': 'school'
+      }.get(value, '');
+    }
+
+    function relationshipUsesReverseCanonicalDirection(value) {
+      return value == 'CONFERENCE_GOVERNS_SCHOOL'
+        || value == 'COACH_WORKS_AT_SCHOOL'
+        || value == 'FACILITY_BELONGS_TO_SCHOOL';
+    }
+
+    function isSourceType(value) {
+      return value == 'official' || value == 'institutional' || value == 'publication'
+        || value == 'document' || value == 'founder' || value == 'other';
+    }
+
+    function isSourceReliability(value) {
+      return value == 'official' || value == 'high' || value == 'medium'
+        || value == 'low' || value == 'unverified';
+    }
+
+    function createAttribution(data) {
+      return data.createdBy == request.auth.uid
+        && data.updatedBy == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function updateAttribution(data) {
+      return data.createdBy == resource.data.createdBy
+        && data.createdAt == resource.data.createdAt
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function legacyHistoryPreserved(nextHistory, previousHistory) {
+      return previousHistory.size() <= 4
+        && (previousHistory.size() <= 0 || nextHistory.get('v1', {}) == previousHistory[0])
+        && (previousHistory.size() <= 1 || nextHistory.get('v2', {}) == previousHistory[1])
+        && (previousHistory.size() <= 2 || nextHistory.get('v3', {}) == previousHistory[2])
+        && (previousHistory.size() <= 3 || nextHistory.get('v4', {}) == previousHistory[3]);
+    }
+
+    function historyPreserved(nextHistory, previousHistory) {
+      return nextHistory is map
+        && (
+          (previousHistory is list && legacyHistoryPreserved(nextHistory, previousHistory))
+          || (previousHistory is map && mapHistoryPreserved(nextHistory, previousHistory))
+        );
+    }
+
+    function mapHistoryPreserved(nextHistory, previousHistory) {
+      let changes = nextHistory.diff(previousHistory);
+      return changes.removedKeys().size() == 0 && changes.changedKeys().size() == 0;
+    }
+
+    function historyAddedOne(nextHistory, previousHistory) {
+      return historyPreserved(nextHistory, previousHistory)
+        && ((previousHistory is list && nextHistory.size() == previousHistory.size() + 1)
+          || (previousHistory is map && nextHistory.size() == previousHistory.size() + 1));
+    }
+
+    function historyUnchanged(nextHistory, previousHistory) {
+      return (previousHistory is list && nextHistory is map
+          && nextHistory.size() == previousHistory.size()
+          && legacyHistoryPreserved(nextHistory, previousHistory))
+        || (previousHistory is map && nextHistory == previousHistory);
+    }
+
+    function historyAdvancedAtMostOne(nextHistory, previousHistory) {
+      return historyPreserved(nextHistory, previousHistory)
+        && (nextHistory.size() == previousHistory.size()
+          || nextHistory.size() == previousHistory.size() + 1);
+    }
+
+    function validLatestVersion(data) {
+      let entry = data.versionHistory.get(data.latestVersionKey, {});
+      return entry.version == data.version
+        && entry.changedBy == request.auth.uid
+        && entry.changedAt == request.time
+        && isNonEmptyString(entry.reason);
+    }
+
+    function validLatestConfidence(data, priorConfidence) {
+      let entry = data.confidenceHistory.get(data.latestConfidenceKey, {});
+      return entry is map
+        && entry.keys().hasOnly(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason', 'sourceIds'])
+        && entry.version == data.version
+        && entry.from == priorConfidence
+        && entry.to == data.confidence
+        && entry.changedBy == request.auth.uid
+        && entry.changedAt == request.time
+        && entry.sourceIds == data.sourceIds
+        && isNonEmptyString(entry.reason);
+    }
+
+    function validLatestStatus(data, priorStatus) {
+      let entry = data.statusHistory.get(data.latestStatusKey, {});
+      return entry is map
+        && entry.keys().hasOnly(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason'])
+        && entry.version == data.version
+        && entry.from == priorStatus
+        && entry.to == data.status
+        && entry.changedBy == request.auth.uid
+        && entry.changedAt == request.time
+        && isNonEmptyString(entry.reason);
+    }
+
+    function validCurrentConfidencePointer(data) {
+      let entry = data.confidenceHistory.get(data.latestConfidenceKey, {});
+      return isNonEmptyString(data.latestConfidenceKey)
+        && entry is map
+        && entry.keys().hasAll(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason', 'sourceIds'])
+        && entry.keys().hasOnly(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason', 'sourceIds'])
+        && entry.version is int && entry.version > 0 && entry.version <= data.version
+        && isKnowledgeConfidence(entry.from)
+        && entry.to == data.confidence
+        && entry.changedAt is timestamp && isNonEmptyString(entry.changedBy)
+        && isNonEmptyString(entry.reason)
+        && entry.sourceIds == data.sourceIds;
+    }
+
+    function validCurrentStatusPointer(data) {
+      let entry = data.statusHistory.get(data.latestStatusKey, {});
+      return isNonEmptyString(data.latestStatusKey)
+        && entry is map
+        && entry.keys().hasAll(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason'])
+        && entry.keys().hasOnly(['version', 'from', 'to', 'changedAt', 'changedBy', 'reason'])
+        && entry.version is int && entry.version > 0 && entry.version <= data.version
+        && isKnowledgeStatus(entry.from)
+        && entry.to == data.status
+        && entry.changedAt is timestamp && isNonEmptyString(entry.changedBy)
+        && isNonEmptyString(entry.reason);
+    }
+
+    function validVersionedCreateEntries(data, hasConfidence) {
+      return validLatestVersion(data)
+        && validLatestStatus(data, data.status)
+        && (!hasConfidence || validLatestConfidence(data, data.confidence));
+    }
+
+    // The subject write enforces the bounded history containers. The linked
+    // immutable audit write validates the initial entries, which keeps each
+    // operation below Firestore's per-operation expression budget.
+    function validVersionedCreateStructure(data, hasConfidence) {
+      return data.version == 1
+        && data.versionHistory is map && data.versionHistory.size() == 1
+        && data.statusHistory is map && data.statusHistory.size() == 1
+        && (!hasConfidence
+          || (data.confidenceHistory is map && data.confidenceHistory.size() == 1));
+    }
+
+    function validVersionedUpdate(data, hasConfidence) {
+      return data.version == resource.data.version + 1
+        && data.versionHistory is map
+        && resource.data.versionHistory is map
+        && data.versionHistory.size() == resource.data.versionHistory.size() + 1
+        && mapHistoryPreserved(data.versionHistory, resource.data.versionHistory)
+        && validLatestVersion(data)
+        && data.get('legacyHistorySnapshot', null) == resource.data.get('legacyHistorySnapshot', null)
+        && (data.status == resource.data.status
+          ? (data.statusHistory == resource.data.statusHistory
+            && data.latestStatusKey == resource.data.latestStatusKey)
+          : (data.statusHistory is map
+            && resource.data.statusHistory is map
+            && data.statusHistory.size() == resource.data.statusHistory.size() + 1
+            && mapHistoryPreserved(data.statusHistory, resource.data.statusHistory)
+            && validLatestStatus(data, resource.data.status)))
+        && (!hasConfidence || (data.confidence == resource.data.confidence
+          ? (data.confidenceHistory == resource.data.confidenceHistory
+            && data.latestConfidenceKey == resource.data.latestConfidenceKey)
+          : (data.confidenceHistory is map
+            && resource.data.confidenceHistory is map
+            && data.confidenceHistory.size() == resource.data.confidenceHistory.size() + 1
+            && mapHistoryPreserved(data.confidenceHistory, resource.data.confidenceHistory)
+            && validLatestConfidence(data, resource.data.confidence))));
+    }
+
+    function isExplicitLegacyVersionedResource(hasConfidence) {
+      return isExplicitLegacyVersionedData(resource.data, hasConfidence);
+    }
+
+    function isExplicitLegacyVersionedData(previous, hasConfidence) {
+      let versionHistory = previous.get('versionHistory', null);
+      let statusHistory = previous.get('statusHistory', null);
+      let confidenceHistory = previous.get('confidenceHistory', null);
+      return (versionHistory == null || versionHistory is list)
+        && (statusHistory == null || statusHistory is list)
+        && (!hasConfidence || confidenceHistory == null || confidenceHistory is list)
+        && !previous.keys().hasAny(['latestVersionKey', 'latestStatusKey', 'legacyHistorySnapshot'])
+        && (!hasConfidence || !previous.keys().hasAny(['latestConfidenceKey']));
+    }
+
+    function legacyHistorySnapshotPreservedAgainst(data, previous, historyField) {
+      let previousHistory = previous.get(historyField, null);
+      let nextSnapshot = data.get('legacyHistorySnapshot', {});
+      let previousSnapshot = previous.get('legacyHistorySnapshot', {});
+      return previousHistory is list
+        ? nextSnapshot.get(historyField, null) == previousHistory
+        : nextSnapshot.get(historyField, null) == previousSnapshot.get(historyField, null);
+    }
+
+    function legacyHistorySnapshotsPreservedAgainst(data, previous, hasConfidence) {
+      return (!previous.keys().hasAny(['versionHistory', 'legacyHistorySnapshot'])
+          || legacyHistorySnapshotPreservedAgainst(data, previous, 'versionHistory'))
+        && (!previous.keys().hasAny(['statusHistory', 'legacyHistorySnapshot'])
+          || legacyHistorySnapshotPreservedAgainst(data, previous, 'statusHistory'))
+        && (!hasConfidence
+          || (!previous.keys().hasAny(['confidenceHistory', 'legacyHistorySnapshot'])
+            || legacyHistorySnapshotPreservedAgainst(data, previous, 'confidenceHistory')));
+    }
+
+    function validLegacyVersionedUpdateAgainst(data, previous, hasConfidence) {
+      let previousHasVersion = previous.keys().hasAny(['version']);
+      return isExplicitLegacyVersionedData(previous, hasConfidence)
+        && (previousHasVersion ? data.version == previous.version + 1 : data.version >= 2)
+        && data.versionHistory is map
+        && data.versionHistory.size() == data.version
+        && validLatestVersion(data)
+        && data.statusHistory is map && data.statusHistory.size() >= 1
+        && (data.status == previous.status
+          ? validCurrentStatusPointer(data)
+          : validLatestStatus(data, previous.status))
+        && (!hasConfidence || (data.confidenceHistory is map
+          && data.confidenceHistory.size() >= 1
+          && (data.confidence == previous.confidence
+            ? validCurrentConfidencePointer(data)
+            : validLatestConfidence(data, previous.confidence))))
+        && legacyHistorySnapshotsPreservedAgainst(data, previous, hasConfidence);
+    }
+
+    function validLegacyVersionedUpdateStructure(data, hasConfidence) {
+      return data.version is int && data.version >= 2
+        && data.versionHistory is map && data.versionHistory.size() == data.version
+        && data.statusHistory is map && data.statusHistory.size() >= 1
+        && (!hasConfidence
+          || (data.confidenceHistory is map && data.confidenceHistory.size() >= 1))
+        && data.get('legacyHistorySnapshot', {}) is map;
+    }
+
+    function validLegacyVersionedUpdate(data, hasConfidence) {
+      return validLegacyVersionedUpdateAgainst(data, resource.data, hasConfidence);
+    }
+
+    function validVersionedMutation(data, hasConfidence) {
+      let completeResourceHistory = resource.data.version is int
+        && resource.data.versionHistory is map
+        && resource.data.statusHistory is map
+        && (!hasConfidence || resource.data.confidenceHistory is map);
+      return (completeResourceHistory && validVersionedUpdate(data, hasConfidence))
+        || (!completeResourceHistory
+          && isExplicitLegacyVersionedResource(hasConfidence)
+          && validLegacyVersionedUpdate(data, hasConfidence));
+    }
+
+    function auditEventPath(eventId) {
+      return /databases/$(database)/documents/internalKnowledgeAuditEvents/$(eventId);
+    }
+
+    function hasMutationAudit(data, subjectType) {
+      let expectedAuditId = 'knowledge-audit_' + subjectType + '_' + data.id + '_' + data.latestVersionKey;
+      return data.lastAuditEventId is string
+        && data.latestVersionKey is string
+        && data.lastAuditEventId == expectedAuditId
+        && existsAfter(auditEventPath(expectedAuditId));
+    }
+
+    function hasFullyBoundMutationAudit(data, subjectType) {
+      let expectedAuditId = 'knowledge-audit_' + subjectType + '_' + data.id + '_' + data.latestVersionKey;
+      let auditPath = auditEventPath(expectedAuditId);
+      let audit = getAfter(auditPath).data;
+      return hasMutationAudit(data, subjectType)
+        && audit.id == expectedAuditId
+        && audit.workspaceId == data.workspaceId
+        && audit.subjectType == subjectType
+        && audit.subjectId == data.id
+        && audit.actorId == request.auth.uid
+        && audit.occurredAt == request.time
+        && audit.version == data.version;
+    }
+
+    function nodeRegistryPath(workspaceId, nodeType) {
+      return /databases/$(database)/documents/internalKnowledgeUniqueness/$("node-registry:" + workspaceId + ":" + nodeType);
+    }
+
+    function relationshipRegistryPath(workspaceId) {
+      return /databases/$(database)/documents/internalKnowledgeUniqueness/$("relationship-registry:" + workspaceId);
+    }
+
+    function sourceRegistryPath(workspaceId) {
+      return /databases/$(database)/documents/internalKnowledgeUniqueness/$("source-registry:" + workspaceId);
+    }
+
+    function nodeRegistryOwnsAll(data, documentId) {
+      let registry = getAfter(nodeRegistryPath(data.workspaceId, data.type)).data;
+      let keys = data.canonicalNameKeys;
+      return existsAfter(nodeRegistryPath(data.workspaceId, data.type))
+        && keys.size() > 0 && keys.size() <= 4 && keys.toSet().size() == keys.size()
+        && registry.kind == 'node-registry'
+        && registry.workspaceId == data.workspaceId
+        && registry.nodeType == data.type
+        && registry.owners.get(keys[0], '') == documentId
+        && (keys.size() <= 1 || registry.owners.get(keys[1], '') == documentId)
+        && (keys.size() <= 2 || registry.owners.get(keys[2], '') == documentId)
+        && (keys.size() <= 3 || registry.owners.get(keys[3], '') == documentId)
+        && registry.claimedKeysByNode.get(documentId, []) == keys;
+    }
+
+    function sourcePath(sourceId) {
+      return /databases/$(database)/documents/internalKnowledgeSources/$(sourceId);
+    }
+
+    function activeSourceRecord(sourceId, workspaceId) {
+      let path = sourcePath(sourceId);
+      let source = getAfter(path);
+      return isIdentifier(sourceId)
+        && existsAfter(path)
+        && source.data.workspaceId == workspaceId
+        && source.data.status == 'active';
+    }
+
+    function activeSourceAt(sourceIds, index, workspaceId) {
+      return sourceIds.size() <= index
+        || activeSourceRecord(sourceIds[index], workspaceId);
+    }
+
+    function canonicalSourcesValid(data) {
+      return data.sourceIds is list
+        && data.sourceIds.size() <= 4
+        && data.sourceIds.toSet().size() == data.sourceIds.size()
+        && activeSourceAt(data.sourceIds, 0, data.workspaceId)
+        && activeSourceAt(data.sourceIds, 1, data.workspaceId)
+        && activeSourceAt(data.sourceIds, 2, data.workspaceId)
+        && activeSourceAt(data.sourceIds, 3, data.workspaceId)
+        && (data.confidence != 'verified' || data.sourceIds.size() > 0)
+        && (data.confidence != 'conflicting' || data.sourceIds.size() > 1);
+    }
+
+    function canonicalRelationshipSourcesValid(data) {
+      return data.sourceIds is list
+        && data.sourceIds.size() <= 2
+        && data.sourceIds.toSet().size() == data.sourceIds.size()
+        && activeSourceAt(data.sourceIds, 0, data.workspaceId)
+        && activeSourceAt(data.sourceIds, 1, data.workspaceId)
+        && data.sourceIds.size() > 0;
+    }
+
+    function sourceUsedAt(registry, sourceIds, index, subjectKey, shouldBeUsed) {
+      return sourceIds.size() <= index
+        || (shouldBeUsed && registry.subjectKeysBySource.get(sourceIds[index], []).hasAny([subjectKey]))
+        || (!shouldBeUsed && !registry.subjectKeysBySource.get(sourceIds[index], []).hasAny([subjectKey]));
+    }
+
+    function sourceRegistryValidFor(data, subjectKey, shouldBeUsed) {
+      let registry = getAfter(sourceRegistryPath(data.workspaceId)).data;
+      return existsAfter(sourceRegistryPath(data.workspaceId))
+        && registry.kind == 'source-registry'
+        && registry.workspaceId == data.workspaceId
+        && registry.activeSourceIds.hasAll(data.sourceIds)
+        && sourceUsedAt(registry, data.sourceIds, 0, subjectKey, shouldBeUsed)
+        && sourceUsedAt(registry, data.sourceIds, 1, subjectKey, shouldBeUsed)
+        && sourceUsedAt(registry, data.sourceIds, 2, subjectKey, shouldBeUsed)
+        && sourceUsedAt(registry, data.sourceIds, 3, subjectKey, shouldBeUsed);
+    }
+
+    function relationshipSourceRegistryValidFor(data, documentId, shouldBeUsed) {
+      let registry = getAfter(sourceRegistryPath(data.workspaceId)).data;
+      let subjectKey = 'relationship:' + documentId;
+      return existsAfter(sourceRegistryPath(data.workspaceId))
+        && registry.kind == 'source-registry'
+        && registry.workspaceId == data.workspaceId
+        && registry.activeSourceIds.hasAll(data.sourceIds)
+        && sourceUsedAt(registry, data.sourceIds, 0, subjectKey, shouldBeUsed)
+        && sourceUsedAt(registry, data.sourceIds, 1, subjectKey, shouldBeUsed);
+    }
+
+    function canonicalSourceIdsOnly(data) {
+      return data.sources == [];
+    }
+
+    function relationshipRegistryValid(data, documentId, shouldBeActive) {
+      let registry = getAfter(relationshipRegistryPath(data.workspaceId)).data;
+      let exclusiveIds = registry.exclusiveActive.get(data.get('exclusiveClaimKey', ''), []);
+      return existsAfter(relationshipRegistryPath(data.workspaceId))
+        && registry.exactOwners.get(data.identityKey, '') == documentId
+        && ((shouldBeActive
+          && registry.endpointActive.get(data.fromNodeId, []).hasAny([documentId])
+          && registry.endpointActive.get(data.toNodeId, []).hasAny([documentId]))
+          || (!shouldBeActive
+            && !registry.endpointActive.get(data.fromNodeId, []).hasAny([documentId])
+            && !registry.endpointActive.get(data.toNodeId, []).hasAny([documentId])))
+        && (!data.keys().hasAny(['exclusiveClaimKey'])
+          || (((shouldBeActive && exclusiveIds.hasAny([documentId]))
+              || (!shouldBeActive && !exclusiveIds.hasAny([documentId])))
+            && (!shouldBeActive
+              || (exclusiveIds.size() > 1
+                ? data.confidence == 'conflicting'
+                : data.confidence != 'conflicting'))));
+    }
+
+    function exclusiveConflictRegistryValid(data, documentId) {
+      let registry = getAfter(relationshipRegistryPath(data.workspaceId)).data;
+      let exclusiveIds = registry.exclusiveActive.get(data.exclusiveClaimKey, []);
+      return existsAfter(relationshipRegistryPath(data.workspaceId))
+        && exclusiveIds.size() > 1
+        && exclusiveIds.hasAny([documentId]);
+    }
+
+    function validExclusiveConflictHistoryUpdate(data) {
+      return data.version == resource.data.version + 1
+        && data.versionHistory is map
+        && resource.data.versionHistory is map
+        && data.versionHistory.size() == resource.data.versionHistory.size() + 1
+        && mapHistoryPreserved(data.versionHistory, resource.data.versionHistory)
+        && validLatestVersion(data)
+        && data.statusHistory == resource.data.statusHistory
+        && data.latestStatusKey == resource.data.latestStatusKey
+        && data.confidenceHistory is map
+        && resource.data.confidenceHistory is map
+        && data.confidenceHistory.size() == resource.data.confidenceHistory.size() + 1
+        && mapHistoryPreserved(data.confidenceHistory, resource.data.confidenceHistory)
+        && validLatestConfidence(data, resource.data.confidence);
+    }
+
+    function nodeHasNoActiveRelationships(data, documentId) {
+      let registry = getAfter(relationshipRegistryPath(data.workspaceId)).data;
+      return existsAfter(relationshipRegistryPath(data.workspaceId))
+        && registry.kind == 'relationship-registry'
+        && registry.workspaceId == data.workspaceId
+        && registry.updatedBy == request.auth.uid
+        && registry.updatedAt == request.time
+        && registry.endpointActive.get(documentId, []).size() == 0;
+    }
+
+    function validRelationshipIdentity(data) {
+      let reverse = relationshipUsesReverseCanonicalDirection(data.relationshipType);
+      let canonicalFrom = reverse ? data.toNodeId : data.fromNodeId;
+      let canonicalTo = reverse ? data.fromNodeId : data.toNodeId;
+      let family = relationshipFamily(data.relationshipType);
+      let exclusiveEndpoint = (family == 'school-coach' || family == 'school-facility')
+        ? canonicalTo
+        : canonicalFrom;
+      return family != ''
+        && data.identityKey == data.workspaceId + ':' + family + ':' + canonicalFrom + ':' + canonicalTo
+        && (isExclusiveRelationshipType(data.relationshipType)
+          ? (data.keys().hasAny(['exclusiveClaimKey'])
+            && data.exclusiveClaimKey == data.workspaceId + ':' + family + ':exclusive:' + exclusiveEndpoint)
+          : !data.keys().hasAny(['exclusiveClaimKey']));
+    }
+
+    function endpointTypesValid(relationship, fromType, toType) {
+      return (fromType == 'school' && (
+          (relationship.relationshipType == 'SCHOOL_LOCATED_IN_STATE' && toType == 'state')
+          || (relationship.relationshipType == 'SCHOOL_LOCATED_IN_REGION' && toType == 'region')
+          || (relationship.relationshipType == 'SCHOOL_BELONGS_TO_CONFERENCE' && toType == 'conference')
+          || (relationship.relationshipType == 'SCHOOL_HAS_COACH' && toType == 'coach')
+          || (relationship.relationshipType == 'SCHOOL_HAS_FACILITY' && toType == 'facility')
+        ))
+        || (toType == 'school' && (
+          (relationship.relationshipType == 'PLAYER_CONNECTED_TO_SCHOOL' && fromType == 'player')
+          || (relationship.relationshipType == 'FACILITY_BELONGS_TO_SCHOOL' && fromType == 'facility')
+          || (relationship.relationshipType == 'COACH_WORKS_AT_SCHOOL' && fromType == 'coach')
+          || (relationship.relationshipType == 'CONFERENCE_GOVERNS_SCHOOL' && fromType == 'conference')
+          || (relationship.relationshipType == 'PROJECT_ABOUT_SCHOOL' && fromType == 'project')
+          || (relationship.relationshipType == 'CONTENT_ABOUT_SCHOOL' && fromType == 'content')
+        ));
+    }
+
+    function validRelationshipEndpoints(data, requireActive) {
+      let fromPath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.fromNodeId);
+      let toPath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.toNodeId);
+      let fromNode = getAfter(fromPath);
+      let toNode = getAfter(toPath);
+      return data.fromNodeId != data.toNodeId
+        && existsAfter(fromPath) && existsAfter(toPath)
+        && fromNode.data.workspaceId == data.workspaceId
+        && toNode.data.workspaceId == data.workspaceId
+        && endpointTypesValid(data, fromNode.data.type, toNode.data.type)
+        && (!requireActive || (fromNode.data.status == 'active' && toNode.data.status == 'active'));
+    }
+
+    function schoolRegionForState(value) {
+      return value in ['ME', 'NH', 'VT', 'MA', 'RI', 'CT', 'NY', 'NJ',
+          'Maine', 'New Hampshire', 'Vermont', 'Massachusetts', 'Rhode Island',
+          'Connecticut', 'New York', 'New Jersey'] ? 'northeast'
+        : value in ['DE', 'PA', 'DC', 'WV', 'VA', 'Delaware', 'Pennsylvania',
+          'District of Columbia', 'West Virginia', 'Virginia'] ? 'mid_atlantic'
+        : value in ['NC', 'SC', 'GA', 'TN', 'KY', 'North Carolina', 'South Carolina',
+          'Georgia', 'Tennessee', 'Kentucky'] ? 'southeast'
+        : value in ['AL', 'FL', 'MS', 'LA', 'Alabama', 'Florida', 'Mississippi', 'Louisiana']
+          ? 'gulf_states'
+        : value in ['OH', 'MI', 'IL', 'IN', 'WI', 'Ohio', 'Michigan', 'Illinois',
+          'Indiana', 'Wisconsin'] ? 'greater_lakes'
+        : value in ['AR', 'MO', 'IA', 'MN', 'OK', 'KS', 'NE', 'ND', 'SD', 'Arkansas',
+          'Missouri', 'Iowa', 'Minnesota', 'Oklahoma', 'Kansas', 'Nebraska',
+          'North Dakota', 'South Dakota'] ? 'midwest'
+        : value in ['TX', 'CO', 'NM', 'Texas', 'Colorado', 'New Mexico'] ? 'texas'
+        : value in ['AZ', 'UT', 'NV', 'CA', 'Arizona', 'Utah', 'Nevada', 'California']
+          ? 'southwest'
+        : value in ['WA', 'OR', 'ID', 'MT', 'WY', 'AK', 'HI', 'Washington', 'Oregon',
+          'Idaho', 'Montana', 'Wyoming', 'Alaska', 'Hawaii'] ? 'northwest'
+        : '';
+    }
+
+    function canonicalStateCode(value) {
+      return {
+        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+        'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+        'District of Columbia': 'DC', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI',
+        'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+        'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+        'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+        'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+        'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+        'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+        'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI',
+        'South Carolina': 'SC', 'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX',
+        'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
+        'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
+      }.get(value, value);
+    }
+
+    function regionNameMatches(value, region) {
+      return value == region
+        || (region == 'northeast' && value == 'Northeast')
+        || (region == 'mid_atlantic' && value == 'Mid-Atlantic')
+        || (region == 'southeast' && value == 'Southeast')
+        || (region == 'gulf_states' && value == 'Gulf States')
+        || (region == 'greater_lakes' && value == 'Greater Lakes')
+        || (region == 'midwest' && value == 'Midwest')
+        || (region == 'texas' && value == 'Texas')
+        || (region == 'southwest' && value == 'Southwest')
+        || (region == 'northwest' && value == 'Northwest');
+    }
+
+    function validOptionalNonNegativeNumber(data, field) {
+      return !(field in data)
+        || ((data[field] is int || data[field] is float) && data[field] >= 0);
+    }
+
+    function validSchoolTuition(data) {
+      return !data.keys().hasAny(['tuition'])
+        || (data.tuition is map
+          && data.tuition.keys().hasAll(['currency'])
+          && data.tuition.keys().hasOnly(['currency', 'inState', 'outOfState', 'academicYear'])
+          && data.tuition.currency == 'USD'
+          && validOptionalNonNegativeNumber(data.tuition, 'inState')
+          && validOptionalNonNegativeNumber(data.tuition, 'outOfState')
+          && (!data.tuition.keys().hasAny(['academicYear'])
+            || isNonEmptyString(data.tuition.academicYear)));
+    }
+
+    function validSchoolData(data) {
+      return data.keys().hasAll([
+          'officialName', 'city', 'state', 'stateNodeId', 'region', 'regionNodeId',
+          'conference', 'division', 'governingBody', 'schoolWebsite', 'athleticsWebsite',
+          'facilities', 'coaches', 'recruitingNotes', 'connectedProjectIds',
+          'connectedContentIds'
+        ])
+        && isNonEmptyString(data.officialName) && isNonEmptyString(data.city)
+        && isNonEmptyString(data.state) && isIdentifier(data.stateNodeId)
+        && isKnowledgeRegion(data.region) && schoolRegionForState(data.state) == data.region
+        && isIdentifier(data.regionNodeId)
+        && data.conference == null
+        && isNonEmptyString(data.division) && isNonEmptyString(data.governingBody)
+        && validHttpUrl(data.schoolWebsite) && validHttpUrl(data.athleticsWebsite)
+        && data.facilities is list && data.facilities.size() == 0
+        && data.coaches is list && data.coaches.size() == 0
+        && validStringList(data.recruitingNotes, 8)
+        && data.connectedProjectIds is list && data.connectedProjectIds.size() == 0
+        && data.connectedContentIds is list && data.connectedContentIds.size() == 0
+        && optionalString(data, 'nickname')
+        && validOptionalNonNegativeNumber(data, 'enrollment')
+        && validSchoolTuition(data)
+        && (!data.keys().hasAny(['publicOrPrivate'])
+          || data.publicOrPrivate in ['public', 'private'])
+        && (!data.keys().hasAny(['lastVerifiedAt'])
+          || data.lastVerifiedAt is string || data.lastVerifiedAt is timestamp);
+    }
+
+    function validSchoolReferenceNodes(data) {
+      let statePath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.stateNodeId);
+      let regionPath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.regionNodeId);
+      let stateNode = getAfter(statePath);
+      let regionNode = getAfter(regionPath);
+      return existsAfter(statePath) && existsAfter(regionPath)
+        && stateNode.data.workspaceId == data.workspaceId
+        && regionNode.data.workspaceId == data.workspaceId
+        && stateNode.data.type == 'state' && regionNode.data.type == 'region'
+        && (data.status == 'archived'
+          || (stateNode.data.status == 'active' && regionNode.data.status == 'active'));
+    }
+
+    function schoolFieldsAbsent(data) {
+      return !data.keys().hasAny([
+        'officialName', 'nickname', 'city', 'state', 'stateNodeId', 'region',
+        'regionNodeId', 'conference', 'division', 'governingBody', 'schoolWebsite',
+        'athleticsWebsite', 'enrollment', 'tuition', 'publicOrPrivate', 'facilities',
+        'coaches', 'recruitingNotes', 'connectedProjectIds', 'connectedContentIds',
+        'lastVerifiedAt'
+      ]);
+    }
+
+    function validNodeSubtype(data) {
+      return data.type == 'project'
+          ? isIdentifier(data.projectId)
+          : (data.type == 'content'
+            ? (isIdentifier(data.contentId) && optionalHttpUrl(data, 'contentUrl'))
+            : true);
+    }
+
+    function schoolSnapshotMatchesNode(snapshot, data) {
+      return snapshot.officialName == data.officialName
+        && snapshot.get('nickname', null) == data.get('nickname', null)
+        && snapshot.city == data.city && snapshot.state == data.state
+        && snapshot.stateNodeId == data.stateNodeId && snapshot.region == data.region
+        && snapshot.regionNodeId == data.regionNodeId && snapshot.conference == data.conference
+        && snapshot.division == data.division && snapshot.governingBody == data.governingBody
+        && snapshot.schoolWebsite == data.schoolWebsite
+        && snapshot.athleticsWebsite == data.athleticsWebsite
+        && snapshot.get('enrollment', null) == data.get('enrollment', null)
+        && snapshot.get('tuition', null) == data.get('tuition', null)
+        && snapshot.get('publicOrPrivate', null) == data.get('publicOrPrivate', null)
+        && snapshot.facilities == data.facilities && snapshot.coaches == data.coaches
+        && snapshot.recruitingNotes == data.recruitingNotes
+        && snapshot.connectedProjectIds == data.connectedProjectIds
+        && snapshot.connectedContentIds == data.connectedContentIds
+        && snapshot.get('lastVerifiedAt', null) == data.get('lastVerifiedAt', null);
+    }
+
+    function validNodeVersionSnapshot(data) {
+      let entry = data.versionHistory.get(data.latestVersionKey, {});
+      return entry.confidence == data.confidence
+        && entry.status == data.status
+        && entry.sourceIds == data.sourceIds;
+    }
+
+    function validNodeBase(data, documentId) {
+      return canonicalSourceIdsOnly(data)
+        && data.id == documentId && isIdentifier(data.id) && isIdentifier(data.workspaceId)
+        && isKnowledgeNodeType(data.type) && isNonEmptyString(data.name)
+        && isKnowledgeConfidence(data.confidence) && isKnowledgeStatus(data.status)
+        && data.version is int && data.version >= 1
+        && validNodeVersionSnapshot(data);
+    }
+
+    function validNodeCreate(data, documentId) {
+      return nodeRegistryOwnsAll(data, documentId)
+        && hasMutationAudit(data, 'node')
+        && canonicalSourcesValid(data)
+        && sourceRegistryValidFor(data, 'node:' + documentId, true)
+        && validVersionedCreateStructure(data, true)
+        && data.status == 'active' && createAttribution(data)
+        && !data.keys().hasAny(['legacyHistorySnapshot'])
+        && validNodeBase(data, documentId) && validNodeSubtype(data);
+    }
+
+    function validNodeUpdate(data, documentId) {
+      return validNodeBase(data, documentId)
+        && data.workspaceId == resource.data.workspaceId
+        && data.type == resource.data.type
+        && resource.data.status == 'active' && (data.status == 'active' || data.status == 'archived')
+        && updateAttribution(data) && validVersionedUpdate(data, true)
+        && validNodeSubtype(data)
+        && ((data.name == resource.data.name
+            && data.aliases == resource.data.aliases
+            && data.canonicalNameKeys == resource.data.canonicalNameKeys)
+          || nodeRegistryOwnsAll(data, documentId))
+        && (data.status == 'archived'
+          || data.sourceIds == resource.data.sourceIds
+          || canonicalSourcesValid(data))
+        && sourceRegistryValidFor(data, 'node:' + documentId, data.status == 'active')
+        && (data.status == 'active' || nodeHasNoActiveRelationships(data, documentId))
+        && hasMutationAudit(data, 'node');
+    }
+
+    function validLegacyNodeUpdate(data, documentId) {
+      return isExplicitLegacyVersionedResource(true)
+        && canonicalSourceIdsOnly(data)
+        && data.id == documentId
+        && data.workspaceId == resource.data.workspaceId
+        && data.type == resource.data.type
+        && data.name == resource.data.name
+        && data.aliases == resource.data.aliases
+        && isKnowledgeConfidence(data.confidence)
+        && resource.data.status == 'active'
+        && (data.status == 'active' || data.status == 'archived')
+        && data.sourceIds == resource.data.sourceIds
+        && updateAttribution(data)
+        && validLegacyVersionedUpdateStructure(data, true)
+        && validNodeVersionSnapshot(data)
+        && validNodeSubtype(data)
+        && (data.status == 'archived' || canonicalSourcesValid(data))
+        && sourceRegistryValidFor(data, 'node:' + documentId, data.status == 'active')
+        && (data.status == 'active' || nodeHasNoActiveRelationships(data, documentId))
+        && hasFullyBoundMutationAudit(data, 'node');
+    }
+
+    function validRelationshipBase(data, documentId) {
+      return canonicalSourceIdsOnly(data)
+        && data.id == documentId
+        && isKnowledgeConfidence(data.confidence)
+        && data.projectIds is list && data.projectIds.size() <= 64;
+    }
+
+    function validRelationshipUpdateBase(data, documentId) {
+      return canonicalSourceIdsOnly(data)
+        && data.id == documentId && data.id == resource.data.id
+        && data.workspaceId == resource.data.workspaceId
+        && data.fromNodeId == resource.data.fromNodeId
+        && data.toNodeId == resource.data.toNodeId
+        && data.relationshipType == resource.data.relationshipType
+        && data.identityKey == resource.data.identityKey
+        && data.get('exclusiveClaimKey', null) == resource.data.get('exclusiveClaimKey', null)
+        && (data.confidence == resource.data.confidence || isKnowledgeConfidence(data.confidence))
+        && (data.projectIds == resource.data.projectIds
+          || (data.projectIds is list && data.projectIds.size() <= 64))
+        && data.version is int && data.version > 0;
+    }
+
+    function validRelationshipVersionSnapshot(data) {
+      let entry = data.versionHistory.get(data.latestVersionKey, {});
+      return entry.confidence == data.confidence && entry.status == data.status
+        && entry.sourceIds == data.sourceIds && entry.projectIds == data.projectIds;
+    }
+
+    function validRelationshipCreate(data, documentId) {
+      return validRelationshipBase(data, documentId) && data.status == 'active'
+        && validRelationshipIdentity(data)
+        && createAttribution(data)
+        && canonicalRelationshipSourcesValid(data)
+        && relationshipSourceRegistryValidFor(data, documentId, true)
+        && (data.confidence != 'conflicting' || data.keys().hasAny(['exclusiveClaimKey']))
+        && validVersionedCreateStructure(data, true)
+        && validRelationshipVersionSnapshot(data)
+        && validRelationshipEndpoints(data, true)
+        && relationshipRegistryValid(data, documentId, true)
+        && !data.keys().hasAny(['legacyHistorySnapshot'])
+        && hasMutationAudit(data, 'relationship');
+    }
+
+    function validLegacyRelationshipUpdate(data, documentId) {
+      return isExplicitLegacyVersionedResource(true)
+        && canonicalSourceIdsOnly(data)
+        && data.id == documentId && data.id == resource.data.id
+        && data.workspaceId == resource.data.workspaceId
+        && data.fromNodeId == resource.data.fromNodeId && data.toNodeId == resource.data.toNodeId
+        && data.relationshipType == resource.data.relationshipType
+        && validRelationshipIdentity(data)
+        && resource.data.status == 'active'
+        && (data.status == 'active' || data.status == 'archived')
+        && isKnowledgeConfidence(data.confidence)
+        && data.confidence == resource.data.confidence
+        && data.sourceIds == resource.data.sourceIds
+        && data.projectIds == resource.data.projectIds
+        && updateAttribution(data)
+        && validLegacyVersionedUpdateStructure(data, true)
+        && validRelationshipVersionSnapshot(data)
+        && relationshipSourceRegistryValidFor(data, documentId, data.status == 'active')
+        && relationshipRegistryValid(data, documentId, data.status == 'active')
+        && hasFullyBoundMutationAudit(data, 'relationship');
+    }
+
+    function validExclusiveConflictUpdate(data, documentId) {
+      let changedFields = data.diff(resource.data).affectedKeys();
+      return changedFields.hasOnly([
+          'confidence', 'confidenceHistory', 'latestConfidenceKey',
+          'version', 'versionHistory', 'latestVersionKey',
+          'updatedBy', 'updatedAt', 'lastAuditEventId'
+        ])
+        && data.id == documentId
+        && resource.data.keys().hasAny(['exclusiveClaimKey'])
+        && data.confidence == 'conflicting'
+        && resource.data.confidence != 'conflicting'
+        && resource.data.status == 'active' && data.status == 'active'
+        && data.updatedBy == request.auth.uid && data.updatedAt == request.time
+        && validExclusiveConflictHistoryUpdate(data)
+        && validRelationshipVersionSnapshot(data)
+        && exclusiveConflictRegistryValid(data, documentId)
+        && hasMutationAudit(data, 'relationship');
+    }
+
+    function validExclusiveRelationshipUpdate(data, documentId) {
+      return isExclusiveRelationshipType(resource.data.relationshipType)
+        && validRelationshipUpdateBase(data, documentId)
+        && resource.data.status == 'active'
+        && (data.status == 'active' || data.status == 'archived')
+        && data.confidence == resource.data.confidence
+        && data.sourceIds == resource.data.sourceIds
+        && data.projectIds == resource.data.projectIds
+        && updateAttribution(data)
+        && validVersionedUpdate(data, true)
+        && validRelationshipVersionSnapshot(data)
+        && relationshipRegistryValid(data, documentId, data.status == 'active')
+        && relationshipSourceRegistryValidFor(data, documentId, data.status == 'active')
+        && hasMutationAudit(data, 'relationship');
+    }
+
+    function validRelationshipUpdate(data, documentId) {
+      return validRelationshipUpdateBase(data, documentId)
+        && resource.data.status == 'active' && (data.status == 'active' || data.status == 'archived')
+        && data.sourceIds.size() > 0 && updateAttribution(data)
+        && validVersionedUpdate(data, true)
+        && validRelationshipVersionSnapshot(data)
+        && (data.status == 'archived'
+          || data.sourceIds == resource.data.sourceIds
+          || canonicalRelationshipSourcesValid(data))
+        && relationshipSourceRegistryValidFor(data, documentId, data.status == 'active')
+        && relationshipRegistryValid(data, documentId, data.status == 'active')
+        && (!resource.data.keys().hasAny(['lastAuditEventId'])
+          || data.lastAuditEventId != resource.data.lastAuditEventId)
+        && hasMutationAudit(data, 'relationship');
+    }
+
+    function validSourceBase(data, documentId) {
+      return data.keys().hasOnly([
+          'id', 'workspaceId', 'title', 'url', 'publisher', 'sourceType', 'accessedAt',
+          'publishedAt', 'reliability', 'notes', 'projectIds', 'createdAt', 'updatedAt',
+          'createdBy', 'updatedBy', 'status', 'version', 'versionHistory', 'statusHistory',
+          'lastAuditEventId', 'latestVersionKey', 'latestStatusKey',
+          'legacyHistorySnapshot'
+        ])
+        && data.id == documentId && isIdentifier(data.id) && isIdentifier(data.workspaceId)
+        && isNonEmptyString(data.title) && isSourceType(data.sourceType)
+        && (data.accessedAt is string || data.accessedAt is timestamp)
+        && isSourceReliability(data.reliability) && validStringList(data.projectIds, 64)
+        && isKnowledgeStatus(data.status) && data.version is int && data.version >= 1
+        && (!data.keys().hasAny(['legacyHistorySnapshot'])
+          || data.legacyHistorySnapshot is map);
+    }
+
+    function validSourceVersionSnapshot(data) {
+      let entry = data.versionHistory.get(data.latestVersionKey, {});
+      return entry is map
+        && entry.title == data.title && entry.get('url', null) == data.get('url', null)
+        && entry.get('publisher', null) == data.get('publisher', null)
+        && entry.sourceType == data.sourceType && entry.accessedAt == data.accessedAt
+        && entry.get('publishedAt', null) == data.get('publishedAt', null)
+        && entry.reliability == data.reliability && entry.get('notes', null) == data.get('notes', null)
+        && entry.projectIds == data.projectIds && entry.status == data.status;
+    }
+
+    function sourceRegistryValidForSource(data, documentId, shouldBeActive) {
+      let registry = getAfter(sourceRegistryPath(data.workspaceId)).data;
+      return existsAfter(sourceRegistryPath(data.workspaceId))
+        && registry.kind == 'source-registry' && registry.workspaceId == data.workspaceId
+        && registry.updatedBy == request.auth.uid && registry.updatedAt == request.time
+        && ((shouldBeActive && registry.activeSourceIds.hasAny([documentId]))
+          || (!shouldBeActive && !registry.activeSourceIds.hasAny([documentId])
+            && registry.subjectKeysBySource.get(documentId, []).size() == 0));
+    }
+
+    function auditSubjectCollection(subjectType) {
+      return {
+        'node': 'internalKnowledgeNodes',
+        'relationship': 'internalKnowledgeRelationships',
+        'source': 'internalKnowledgeSources'
+      }.get(subjectType, '');
+    }
+
+    function auditSubjectVersioningValid(data, subjectPath, subject) {
+      let hasConfidence = data.subjectType != 'source';
+      return data.version == 1
+        ? validVersionedCreateEntries(subject, hasConfidence)
+        : (data.subjectType == 'source'
+          || (exists(subjectPath)
+            && (!isExplicitLegacyVersionedData(get(subjectPath).data, hasConfidence)
+              || validLegacyVersionedUpdateAgainst(
+                subject,
+                get(subjectPath).data,
+                hasConfidence
+              ))));
+    }
+
+    function auditSubjectValid(data, documentId) {
+      let collectionName = auditSubjectCollection(data.subjectType);
+      let subjectPath = /databases/$(database)/documents/$(collectionName)/$(data.subjectId);
+      let subject = getAfter(subjectPath).data;
+      return collectionName != '' && existsAfter(subjectPath)
+        && subject.lastAuditEventId == documentId
+        && subject.workspaceId == data.workspaceId
+        && subject.updatedBy == data.actorId
+        && subject.version == data.version
+        && auditSubjectVersioningValid(data, subjectPath, subject);
+    }
+
+    function isKnowledgeAuditEventType(value) {
+      return value in [
+        'created', 'updated', 'archived', 'confidence-changed', 'conflict-detected'
+      ];
+    }
+
+    function validAuditMetadata(metadata) {
+      return metadata is map
+        && metadata.keys().hasOnly([
+          'confidence', 'conflictCount', 'conflictingRelationshipId'
+        ])
+        && (!metadata.keys().hasAny(['confidence'])
+          || isKnowledgeConfidence(metadata.confidence))
+        && (!metadata.keys().hasAny(['conflictCount'])
+          || (metadata.conflictCount is int
+            && metadata.conflictCount >= 0 && metadata.conflictCount <= 1000))
+        && (!metadata.keys().hasAny(['conflictingRelationshipId'])
+          || isIdentifier(metadata.conflictingRelationshipId));
+    }
+
+    function validAuditEvent(data, documentId) {
+      return data.keys().hasOnly([
+          'id', 'workspaceId', 'subjectType', 'subjectId', 'eventType', 'actorId',
+          'occurredAt', 'summary', 'version', 'metadata'
+        ])
+        && data.id == documentId
+        && isIdentifier(data.workspaceId) && isIdentifier(data.subjectId)
+        && isKnowledgeAuditEventType(data.eventType)
+        && data.actorId == request.auth.uid
+        && data.occurredAt == request.time
+        && isNonEmptyString(data.summary)
+        && data.version is int && data.version > 0
+        && validAuditMetadata(data.metadata)
+        && auditSubjectValid(data, documentId);
+    }
+
+    function validClaimBase(data, documentId) {
+      return data.id == documentId && isNonEmptyString(data.id) && isIdentifier(data.workspaceId)
+        && data.createdBy is string && data.updatedBy is string
+        && data.createdAt is timestamp && data.updatedAt is timestamp;
+    }
+
+    function validUniquenessClaim(data, documentId) {
+      return validClaimBase(data, documentId)
+        && data.kind in [
+          'node-registry', 'relationship-registry', 'source-registry'
+        ];
+    }
+
+    function permanentNodeClaimsPreserved(nextData) {
+      let changes = nextData.owners.diff(resource.data.owners);
+      return changes.removedKeys().size() == 0 && changes.changedKeys().size() == 0;
+    }
+
+    function permanentRelationshipClaimsPreserved(nextData) {
+      let changes = nextData.exactOwners.diff(resource.data.exactOwners);
+      return changes.removedKeys().size() == 0 && changes.changedKeys().size() == 0;
+    }
+
+    function permanentClaimsPreserved(nextData) {
+      return resource.data.kind == 'node-registry'
+        ? permanentNodeClaimsPreserved(nextData)
+        : (resource.data.kind == 'relationship-registry'
+          ? permanentRelationshipClaimsPreserved(nextData)
+          : true);
     }
 
     match /users/{userId} {
@@ -21,9 +1178,78 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /internalKnowledgeNodes/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validNodeCreate(request.resource.data, documentId);
+      allow update: if isAdmin() && (
+        validLegacyNodeUpdate(request.resource.data, documentId)
+        || validNodeUpdate(request.resource.data, documentId)
+      );
+      allow delete: if false;
+    }
+
+    match /internalKnowledgeRelationships/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validRelationshipCreate(request.resource.data, documentId);
+      allow update: if isAdmin() && (
+        validLegacyRelationshipUpdate(request.resource.data, documentId)
+        || validExclusiveConflictUpdate(request.resource.data, documentId)
+        || validExclusiveRelationshipUpdate(request.resource.data, documentId)
+        || validRelationshipUpdate(request.resource.data, documentId)
+      );
+      allow delete: if false;
+    }
+
+    match /internalKnowledgeSources/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validSourceBase(request.resource.data, documentId)
+        && request.resource.data.status == 'active' && createAttribution(request.resource.data)
+        && validVersionedCreateStructure(request.resource.data, false)
+        && validSourceVersionSnapshot(request.resource.data)
+        && sourceRegistryValidForSource(request.resource.data, documentId, true)
+        && !request.resource.data.keys().hasAny(['legacyHistorySnapshot'])
+        && hasFullyBoundMutationAudit(request.resource.data, 'source');
+      allow update: if isAdmin() && validSourceBase(request.resource.data, documentId)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && resource.data.status == 'active'
+        && (request.resource.data.status == 'active' || request.resource.data.status == 'archived')
+        && updateAttribution(request.resource.data)
+        && validVersionedMutation(request.resource.data, false)
+        && validSourceVersionSnapshot(request.resource.data)
+        && sourceRegistryValidForSource(request.resource.data, documentId, request.resource.data.status == 'active')
+        && (!resource.data.keys().hasAny(['lastAuditEventId'])
+          || request.resource.data.lastAuditEventId != resource.data.lastAuditEventId)
+        && hasFullyBoundMutationAudit(request.resource.data, 'source');
+      allow delete: if false;
+    }
+
+    match /internalKnowledgeAuditEvents/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validAuditEvent(request.resource.data, documentId);
+      allow update, delete: if false;
+    }
+
+    match /internalKnowledgeUniqueness/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validUniquenessClaim(request.resource.data, documentId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin() && request.resource.data.id == documentId
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.kind in ['node-registry', 'relationship-registry', 'source-registry']
+        && permanentClaimsPreserved(request.resource.data);
+      allow delete: if false;
+    }
+
     match /{collectionName}/{documentId} {
-      allow read: if publishedRead() || isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow read: if (!isInternalKnowledgeCollection(collectionName) && publishedRead()) || isAdmin();
+      allow create, update, delete: if !isInternalKnowledgeCollection(collectionName) && isAdmin();
     }
   }
 }

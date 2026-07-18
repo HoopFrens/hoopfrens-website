@@ -35,6 +35,7 @@ import { ExecutiveTimeline } from "@/components/executive/ExecutiveTimeline";
 import { FounderDailyBrief } from "@/components/executive/FounderDailyBrief";
 import { NeedsAttention } from "@/components/executive/NeedsAttention";
 import { OpportunitiesRecommendations } from "@/components/executive/OpportunitiesRecommendations";
+import { KnowledgeExplorer } from "@/components/executive/KnowledgeExplorer";
 import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
 import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -51,6 +52,7 @@ import {
   LockKeyhole,
   Map as MapIcon,
   Mic,
+  Network,
   Send,
 } from "lucide-react";
 import Link from "next/link";
@@ -61,6 +63,7 @@ export type ExecutiveSpaceId =
   | "executive-office"
   | "projects"
   | "intelligence-center"
+  | "knowledge-center"
   | "production-studio"
   | "strategy-room"
   | "product-lab"
@@ -290,6 +293,16 @@ export const executiveSpaces: ExecutiveSpace[] = [
     panels: ["Signals", "Sources", "Watchlist"],
   },
   {
+    id: "knowledge-center",
+    label: "Knowledge Center",
+    href: "/executive-workspace/knowledge",
+    eyebrow: "Graph",
+    title: "Knowledge Center",
+    description: "Explore canonical knowledge nodes, source-backed relationships, confidence, and connected projects.",
+    icon: Network,
+    panels: ["Knowledge Nodes", "Relationships", "Sources"],
+  },
+  {
     id: "production-studio",
     label: "Production Studio",
     href: "/executive-workspace/production-studio",
@@ -483,6 +496,8 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
               <ExecutiveOfficeContent currentUserId={user?.uid || "founder"} />
             ) : activeSpace.id === "projects" ? (
               <ProjectsWorkspace currentUserId={user?.uid || "founder"} currentUserLabel={userLabel} />
+            ) : activeSpace.id === "knowledge-center" ? (
+              <KnowledgeExplorer currentUserId={user?.uid || "founder"} />
             ) : (
               <WorkspacePlaceholder activeSpace={activeSpace} />
             )}
