@@ -42,8 +42,8 @@ export function ProjectPrioritySummary({ prioritization }: ProjectPrioritySummar
             <Icon size={14} className="text-red-500" />
           </div>
           <p className="mt-2 text-xl font-black text-white">{count}</p>
-          <p className="mt-1 truncate text-xs font-bold text-zinc-300">{project?.project.title || "None"}</p>
-          <p className="mt-1 line-clamp-2 text-[10px] font-bold leading-4 text-zinc-600">
+          <p className="mt-1 min-h-8 text-xs font-bold leading-4 text-zinc-300">{project?.project.title || "None"}</p>
+          <p className="mt-1 text-[10px] font-bold leading-4 text-zinc-600">
             {project ? project.reasons.slice(0, 2).join(" ") : "No projects in this group."}
           </p>
         </div>

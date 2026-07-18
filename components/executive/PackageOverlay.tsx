@@ -21,6 +21,7 @@ type PackageOverlayFrameProps = {
   title: string;
   projectTitle: string;
   status: string;
+  eyebrow?: string;
   metadata: PackageOverlayMetadata[];
   titleId: string;
   closeButtonRef?: React.RefObject<HTMLButtonElement | null>;
@@ -68,6 +69,7 @@ export function PackageOverlayFrame({
   title,
   projectTitle,
   status,
+  eyebrow = "Headquarters Package",
   metadata,
   titleId,
   closeButtonRef,
@@ -91,7 +93,7 @@ export function PackageOverlayFrame({
         <header className="shrink-0 border-b border-white/10 bg-[#0d0d0d] px-4 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-500">Headquarters Package</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-500">{eyebrow}</p>
               <h2 id={titleId} className="mt-2 text-xl font-black uppercase leading-tight text-white sm:text-2xl">{title}</h2>
               <p className="mt-2 break-words text-sm font-bold leading-6 text-zinc-300">{projectTitle}</p>
             </div>
@@ -129,6 +131,7 @@ export function PackageOverlay({
   title,
   projectTitle,
   status,
+  eyebrow,
   metadata,
   returnFocusRef,
   onClose,
@@ -196,6 +199,7 @@ export function PackageOverlay({
         title={title}
         projectTitle={projectTitle}
         status={status}
+        eyebrow={eyebrow}
         metadata={metadata}
         titleId={titleId}
         closeButtonRef={closeButtonRef}

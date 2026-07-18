@@ -68,7 +68,7 @@ export function ExecutiveTimeline({
                         href={event.projectHref}
                         className="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-black leading-5 text-white transition hover:text-red-300"
                       >
-                        <span className="truncate">{event.project.title}</span>
+                        <span>{event.project.title}</span>
                         <ArrowUpRight size={12} className="shrink-0" />
                       </Link>
                     </div>

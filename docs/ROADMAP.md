@@ -23,10 +23,10 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
 | Release 2 | Released | Release 2.4 is released. Founder validation is complete, the final Release Gate is approved with minor follow-up, and EO-025 through EO-045 are complete. |
-| Release 3 | Planned | Knowledge operations and source-aware intelligence foundation. |
+| Release 3 | In progress | Release 3.1 Capability 1, the deterministic Knowledge Graph foundation, is implemented, Founder validated, and ready for its final commit and pull request; EO-050 and AI implementation have not started. |
 | Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
 
-Release 2.4 is complete. Release 3 remains planned and no Release 3 implementation has started. No Release 3 or Release 4 scope should begin without an approved Engineering Order.
+Release 2.4 is complete. Release 3.1 Knowledge Graph work is limited to approved EO-046 through EO-049 and is implemented, Founder validated, and awaiting its final commit and pull request. EO-050, AI reasoning, and Release 4 implementation have not started and require separately approved Engineering Orders.
 
 ## 4. Release 1 - Completed
 
@@ -95,11 +95,27 @@ EO-025 through EO-045 are complete for Release 2.4. The hardening pass adds prod
 
 Release 2.4 implements concrete Research, Outline, and Production Packages only. Review and Publishing remain reserved artifact types; concrete Review or Publishing package models, repositories, and viewers are not part of this release.
 
-## 6. Release 3 - Planned
+## 6. Release 3 - In Progress
 
-Release 3 is the Knowledge Operations phase. Its direction is to make basketball intelligence durable, source-aware, and connected to projects.
+Release 3 is the Executive Reasoning planning phase. Its Knowledge Operations direction remains to make basketball intelligence durable, source-aware, and connected to projects; implementation remains subject to the approved architecture and capability sequence.
 
-Planned outcomes:
+### Release 3.1 Capability Status
+
+- **Release 3:** In progress within EO-046 through EO-049 only
+- **Release 3.1 Capability 1:** Ready for final commit and pull request
+- **Knowledge Graph foundation:** Implemented and verified
+- **Founder functional validation:** Complete, including post-remediation reopening, editing, saving, refresh persistence, readability, and console-health confirmation for the actual Ashland University Athletics Source and Ashland University School records
+- **EO-050 / CIO capability:** Not started
+- **AI implementation:** Not started
+
+| Engineering Order | Capability | Status |
+| --- | --- | --- |
+| EO-046 | Knowledge Graph Foundation | Ready for final commit and pull request |
+| EO-047 | School Intelligence | Ready for final commit and pull request |
+| EO-048 | Knowledge Explorer | Ready for final commit and pull request |
+| EO-049 | Knowledge Relationships | Ready for final commit and pull request |
+
+Release 3 direction beyond Capability 1:
 
 - Persisted Knowledge, Source, People, and Organization records.
 - Verification status and source provenance applied consistently.
@@ -107,7 +123,13 @@ Planned outcomes:
 - Intelligence Center workflows defined through future Engineering Orders.
 - Executive intelligence grounded in approved internal records.
 
-Detailed scope, workflows, and acceptance criteria remain subject to future Engineering Orders.
+Additional Release 3 scope beyond EO-046 through EO-049 remains subject to future approved Engineering Orders.
+
+EO-046 through EO-049 are implemented for review as a deterministic, protected foundation: canonical nodes, relationships, sources, confidence, School Intelligence, Firestore repositories, integrity checks, audit history, and the Knowledge Center Explorer at `/executive-workspace/knowledge`. The P1 integrity remediation adds strict calendar-date validation, rule-enforced canonical history maps and linked audit shape, transactional uniqueness/provenance/archive guards, and staged in-memory subject-and-audit atomicity. Automated and emulator verification is complete for the remediation.
+
+The Founder functional session with populated protected data occurred before the integrity remediation, and fixture-backed Ashland tests demonstrate representative legacy compatibility. Post-remediation Founder validation confirmed that the actual Founder-created Ashland University Athletics Source record and the actual Founder-created Ashland University School record were reopened successfully. Both records were edited and saved, refresh persistence passed, both records remained readable, and no runtime or browser-console errors were observed. Live relationship records were not separately revalidated and are not included in this confirmation. EO-046 through EO-049 are ready for their final commit and pull request. Automated imports, AI reasoning, external search, and CIO behavior are not included.
+
+Remaining technical debt is explicit. Accepted P2 debt includes aggregate-registry document-size and contention limits, repository-derived audit semantics, the approved-admin direct-client trust boundary, and qualified legacy reconstruction; registries require sharding before scale makes their limits material. Privileged Firebase Admin SDK or Console access bypassing Firestore rules remains an accepted P3 operational boundary governed by project IAM and operational controls.
 
 ## 7. Release 4 - Planned
 

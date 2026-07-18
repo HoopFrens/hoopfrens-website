@@ -676,7 +676,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
         <ProjectPrioritySummary prioritization={prioritization} />
 
         <section className="border border-white/10 bg-[#0d0d0d] p-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.4fr)_repeat(5,minmax(130px,0.7fr))_minmax(150px,0.8fr)]">
+          <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-[minmax(260px,1.4fr)_repeat(5,minmax(130px,0.7fr))_minmax(150px,0.8fr)]">
             <label className="relative block">
               <span className="sr-only">Search projects</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={15} />
@@ -735,17 +735,30 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1740px] w-full border-collapse text-left">
+                <table className="w-full min-w-[1452px] table-fixed border-collapse text-left">
+                  <colgroup>
+                    <col className="w-[220px]" />
+                    <col className="w-32" />
+                    <col className="w-28" />
+                    <col className="w-32" />
+                    <col className="w-24" />
+                    <col className="w-20" />
+                    <col className="w-24" />
+                    <col className="w-32" />
+                    <col className="w-32" />
+                    <col className="w-28" />
+                    <col className="w-56" />
+                  </colgroup>
                   <thead className="border-b border-white/10 bg-black">
                     <tr>
                       {[
                         "Title",
+                        "Recommendation",
                         "Type",
                         "Current Workspace",
                         "State",
                         "Priority",
                         "Priority Score",
-                        "Recommendation Score",
                         "Progress",
                         "Owner",
                         "Updated",
@@ -770,6 +783,12 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                               {project.title}
                             </button>
                           </td>
+                          <td className="px-3 py-3">
+                            <p className="text-sm font-black text-white">{recommendation?.score ?? 0}</p>
+                            <p className="mt-1 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.12em] text-red-400">
+                              {recommendation?.actionLabel || "Archived"}
+                            </p>
+                          </td>
                           <td className="px-3 py-3 text-xs font-bold text-zinc-300">{formatProjectType(getProjectType(project))}</td>
                           <td className="px-3 py-3 text-xs font-bold text-zinc-300">{formatProjectWorkspace(project.currentWorkspace)}</td>
                           <td className="px-3 py-3">
@@ -784,12 +803,6 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                               {founderPriorityRank ? `Priority #${founderPriorityRank}` : "Active"}
                             </p>
                           </td>
-                          <td className="px-3 py-3">
-                            <p className="text-sm font-black text-white">{recommendation?.score ?? 0}</p>
-                            <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-400">
-                              {recommendation?.actionLabel || "Archived"}
-                            </p>
-                          </td>
                           <td className="w-36 px-3 py-3">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-20 overflow-hidden bg-white/10">
@@ -798,7 +811,7 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                               <span className="text-[10px] font-black text-zinc-400">{project.progressPercent}%</span>
                             </div>
                           </td>
-                          <td className="max-w-48 truncate px-3 py-3 text-xs font-bold text-zinc-300" title={formatProjectOwner(project, currentUserId, currentUserLabel)}>{formatProjectOwner(project, currentUserId, currentUserLabel)}</td>
+                          <td className="break-words px-3 py-3 text-xs font-bold leading-5 text-zinc-300">{formatProjectOwner(project, currentUserId, currentUserLabel)}</td>
                           <td className="whitespace-nowrap px-3 py-3 text-xs font-bold text-zinc-400">{formatProjectDate(project.updatedAt)}</td>
                           <td className="max-w-80 px-3 py-3">
                             <p className="text-xs font-bold leading-5 text-zinc-300">{recommendation?.headline || "No active recommendation"}</p>
