@@ -10,7 +10,7 @@ Establish deterministic, source-aware knowledge before adding governed AI reason
 
 ## Current Scope and Status
 
-EO-046 through EO-049 implement Release 3.1 Capability 1, the deterministic Knowledge Graph foundation. That capability is implemented, Founder validated, and awaiting its final commit and pull request. It contains no AI, model-provider integration, automated ingestion, external API, or external-search behavior.
+EO-046 through EO-049 implement Release 3.1 Capability 1, the deterministic Knowledge Graph foundation. That capability is released, EO-046 through EO-049 are complete, and Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. It contains no AI, model-provider integration, automated ingestion, external API, external-search behavior, or EO-050 implementation.
 
 Future AI and Chief Intelligence Officer capabilities have not started. The pending decisions in [`RELEASE_3_1_DECISION_PACKAGE.md`](./RELEASE_3_1_DECISION_PACKAGE.md) govern only that future AI/CIO work; they do not block or retroactively gate the deterministic Knowledge Graph delivered by EO-046 through EO-049. Every future AI/CIO capability still requires approved governance decisions, its own Engineering Order, capability-specific review, and the four-gate release process.
 
