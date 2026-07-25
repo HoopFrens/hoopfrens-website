@@ -34,6 +34,10 @@ function csv(value: FormDataEntryValue | null) {
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function optionalText(value: FormDataEntryValue | null) {
+  return String(value || "").trim() || undefined;
+}
+
 export function parseOptionalNonNegativeNumber(value: FormDataEntryValue | null) {
   const normalized = String(value || "").trim();
   if (!normalized) return undefined;
@@ -121,10 +125,10 @@ export function KnowledgeNodeForm({ node, nodes, sources, pending, onSubmit }: K
         region: derivedRegion || ("" as KnowledgeRegion),
         regionNodeId,
         conference: null,
-        division: String(formData.get("division") || "").trim(),
-        governingBody: String(formData.get("governingBody") || "").trim(),
-        schoolWebsite: String(formData.get("schoolWebsite") || "").trim(),
-        athleticsWebsite: String(formData.get("athleticsWebsite") || "").trim(),
+        division: optionalText(formData.get("division")),
+        governingBody: optionalText(formData.get("governingBody")),
+        schoolWebsite: optionalText(formData.get("schoolWebsite")),
+        athleticsWebsite: optionalText(formData.get("athleticsWebsite")),
         enrollment: parseOptionalNonNegativeNumber(formData.get("enrollment")),
         tuition: parseOptionalNonNegativeNumber(formData.get("tuitionInState")) !== undefined || parseOptionalNonNegativeNumber(formData.get("tuitionOutOfState")) !== undefined
           ? {
@@ -222,10 +226,10 @@ export function KnowledgeNodeForm({ node, nodes, sources, pending, onSubmit }: K
                 {Object.values(KnowledgeRegion).map((region) => <option key={region} value={region}>{formatHoopFrensRegion(region)}</option>)}
               </select>
             </label>
-            <label className={labelClassName}>Division<input name="division" required defaultValue={school?.division || ""} className={inputClassName} /></label>
-            <label className={labelClassName}>Governing Body<input name="governingBody" required defaultValue={school?.governingBody || ""} className={inputClassName} /></label>
-            <label className={labelClassName}>School Website<input name="schoolWebsite" type="url" required defaultValue={school?.schoolWebsite || ""} className={inputClassName} /></label>
-            <label className={labelClassName}>Athletics Website<input name="athleticsWebsite" type="url" required defaultValue={school?.athleticsWebsite || ""} className={inputClassName} /></label>
+            <label className={labelClassName}>Division<input name="division" defaultValue={school?.division || ""} className={inputClassName} /></label>
+            <label className={labelClassName}>Governing Body<input name="governingBody" defaultValue={school?.governingBody || ""} className={inputClassName} /></label>
+            <label className={labelClassName}>School Website<input name="schoolWebsite" type="url" defaultValue={school?.schoolWebsite || ""} className={inputClassName} /></label>
+            <label className={labelClassName}>Athletics Website<input name="athleticsWebsite" type="url" defaultValue={school?.athleticsWebsite || ""} className={inputClassName} /></label>
             <label className={labelClassName}>Enrollment<input name="enrollment" type="number" min="0" defaultValue={school?.enrollment ?? ""} className={inputClassName} /></label>
             <label className={labelClassName}>Public or Private
               <select name="publicOrPrivate" defaultValue={school?.publicOrPrivate || ""} className={inputClassName}><option value="">Not recorded</option><option value="public">Public</option><option value="private">Private</option></select>
@@ -235,6 +239,7 @@ export function KnowledgeNodeForm({ node, nodes, sources, pending, onSubmit }: K
             <label className={labelClassName}>Tuition Academic Year<input name="tuitionAcademicYear" defaultValue={school?.tuition?.academicYear || ""} className={inputClassName} /></label>
             <label className={labelClassName}>Last Verified At<input name="lastVerifiedAt" type="datetime-local" defaultValue={school?.lastVerifiedAt ? formatKnowledgeSourceDateTimeLocal(school.lastVerifiedAt) : ""} className={inputClassName} /></label>
           </div>
+          <p className="text-xs font-bold leading-5 text-zinc-500">Provide at least one official School or athletics website.</p>
           <label className={labelClassName}>Recruiting Notes<input name="recruitingNotes" defaultValue={school?.recruitingNotes.join(", ") || ""} className={inputClassName} /></label>
           <p className="border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-bold leading-5 text-zinc-400">
             Conference, Coach, Facility, Project, and Content facts are connected after save through canonical relationships.

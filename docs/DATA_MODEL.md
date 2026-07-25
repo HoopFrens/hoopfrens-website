@@ -12,12 +12,14 @@ Core records include:
 - `KnowledgeRelationship`
 - `KnowledgeSource`
 - `KnowledgeAuditEvent`
+- `FounderWorkflowDraft`
 - `Asset`
 - `Person`
 - `Organization`
 - `Decision`
 - `Conversation`
 - `ProductionPackage`
+- `SchoolSpotlightPackage`
 - `Source`
 - `Event`
 - `ExecutiveEvent`
@@ -65,6 +67,19 @@ The inability to reconstruct historical facts that were never stored is accepted
 
 Release 2 shared Region values remain compatible with their existing records. Knowledge Graph School classification uses the separate approved nine-region Hoop Frens model and deterministic state-to-region mapping.
 
+## Founder-Simple Domain
+
+`domain/founder-simple` owns the EO-050 through EO-054 workflow types, runtime validation, draft repository contract, Firestore and in-memory draft repositories, and compatible School Spotlight production-artifact shape. Engineering is complete with all P1 remediation applied. Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, and final Independent Review passed with zero P0 and zero P1 findings; required pull-request checks and the merge remain pending.
+
+- `FounderWorkflowDraft` stores authenticated, workspace- and owner-scoped progress for the deterministic `Request -> Review -> Customize -> Approve` experience. Its Firestore collection is `internalFounderWorkflowDrafts`. Direct reads, owner-filtered queries, repository lookup, and updates require the authenticated approved-admin owner. Revision checks reject stale saves, and draft persistence does not create partial Knowledge Graph records or silently advance project state.
+- `SchoolSpotlightPackage` extends `ProductionPackage`, uses `ArtifactType.ProductionPackage`, and stores its canonical header in `internalProductionPackages`. Protected `internalSchoolSpotlightPackageFacts`, `internalSchoolSpotlightPackageContent`, `internalSchoolSpotlightPackageDelivery`, `internalSchoolSpotlightPackageRequest`, and `internalSchoolSpotlightPackageCustomization` records enforce the supported nested facts, canonical source evidence, vertical-video package, Instagram caption, shot list, unresolved warnings, rights confirmation, request, and customization before activation. Every supported vertical-video scene position must contain exactly the string fields `id`, `heading`, `narration`, and `visualDirection`.
+
+The Release 3.2 package envelope supports one to eight selected facts and up to two active canonical verification sources. Facts are stored in two bounded four-fact integrity parts with an exact unique ID/position manifest so the maximum supported request remains below Firestore's rules-expression ceiling without accepting reordered, duplicated, or incomplete fact fragments.
+
+Guided Add School uses the released Knowledge Graph model through a typed `createSchoolBundle` repository operation. Firestore commits or reuses the Source, State, Region, School, two geography relationships, uniqueness/provenance registries, and their audit events as one transaction. The in-memory repository publishes the equivalent staged state atomically. Deterministic identities and canonical registry ownership make confirmation retry-safe without creating a second School.
+
+Project records retain the active and approved School Spotlight package ID and version so approval is bound to the exact active Production Package version. A package header linked to rules-validated integrity records is first noncanonical `staged` data; one transaction activates that exact version, links the project, and supersedes the prior active package. Normal package lookup excludes staged records. Revision preserves the earlier Production Package and requires a new active version. The integrity collections are protected implementation records, not alternate package types.
+
 ## Service Business Objects
 
 Every persisted Headquarters service artifact implements the shared `BusinessObject` contract:
@@ -81,7 +96,7 @@ Every persisted Headquarters service artifact implements the shared `BusinessObj
 - `summary`
 - Firestore-safe `metadata`
 
-`ArtifactType` reserves Research Package, Outline Package, Production Package, Review Package, and Publishing Package as typed artifact categories. Release 2.4 implements concrete payload models and repositories only for Research, Outline, and Production Packages. Review and Publishing remain reserved artifact types for future Engineering Orders; they do not yet have concrete package payload interfaces, standalone repositories, or package viewers.
+`ArtifactType` reserves Research Package, Outline Package, Production Package, Review Package, and Publishing Package as typed artifact categories. Release 2.4 implements concrete payload models and repositories for Research, Outline, and Production Packages. Release 3.2 adds `SchoolSpotlightPackage` as a compatible Production Package subtype; it does not add a new artifact enum or collection. Review and Publishing remain reserved artifact types for future Engineering Orders; they do not yet have concrete package payload interfaces, standalone repositories, or package viewers.
 
 `BusinessObjectRepository<T>` provides the shared package repository boundary. The implemented Research, Outline, and Production repositories preserve type-specific collection ownership while exposing the same `getByProjectId` and `save` contract. The project transaction layer reserves Review and Publishing collection mappings so future typed artifacts can be committed atomically, but those mappings are not concrete package implementations.
 
@@ -103,7 +118,7 @@ Production completion stores `productionCompletedAt` on the project so timeline 
 
 Executive events are stored under `internalExecutiveEvents`. Project creation and updates use Firestore transactions so the project record, timeline events, and associated service artifacts commit together. Deterministic project and event IDs make create retries and project-history backfill idempotent. Project versions and expected timestamps reject stale mutations.
 
-Protected Release 2 collections include `internalProjects`, `internalResearchPackages`, `internalOutlinePackages`, `internalProductionPackages`, `internalFounderVisits`, and `internalExecutiveEvents`. The protected Knowledge Graph collections are documented separately above. Existing admin authorization rules continue to govern all of these records.
+Protected project and service collections include `internalProjects`, `internalResearchPackages`, `internalOutlinePackages`, `internalProductionPackages`, `internalFounderVisits`, and `internalExecutiveEvents`. Release 3.2 adds protected `internalFounderWorkflowDrafts` plus the `internalSchoolSpotlightPackage*` integrity collections. School Spotlight package headers use `internalProductionPackages`. The protected Knowledge Graph collections are documented separately above.
 
 Production Packages are versioned Business Objects with an active/superseded marker. Revision preserves the prior version historically, clears canonical production completion/readiness fields, and requires a newly completed active version.
 

@@ -23,10 +23,10 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
 | Release 2 | Released | Release 2.4 is released. Founder validation is complete, the final Release Gate is approved with minor follow-up, and EO-025 through EO-045 are complete. |
-| Release 3 | In progress | Release 3.1 Capability 1, the deterministic Knowledge Graph foundation, is released with all four release gates passed; EO-050 and AI implementation have not started. |
+| Release 3 | In progress | Release 3.1 Capability 1 is released. Release 3.2 EO-050 through EO-054 are ready to commit; Founder Validation and final Independent Review passed with zero P0 and zero P1 findings. |
 | Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
 
-Release 2.4 is complete. Release 3.1 Capability 1 is released, and EO-046 through EO-049 are complete. Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. EO-050, AI reasoning, and Release 4 implementation have not started and require separately approved Engineering Orders.
+Release 2.4 is complete. Release 3.1 Capability 1 is released, and EO-046 through EO-049 are complete. Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. Release 3.2 EO-050 through EO-054 are Engineering Complete; targeted post-remediation Founder Validation and final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; required pull-request checks and the merge remain pending. AI reasoning and Release 4 implementation have not started and require separate governance decisions and Engineering Orders.
 
 ## 4. Release 1 - Completed
 
@@ -97,7 +97,7 @@ Release 2.4 implements concrete Research, Outline, and Production Packages only.
 
 ## 6. Release 3 - In Progress
 
-Release 3 is the Executive Reasoning planning phase. Its Knowledge Operations direction remains to make basketball intelligence durable, source-aware, and connected to projects; implementation remains subject to the approved architecture and capability sequence.
+Release 3 establishes deterministic, source-aware knowledge and then makes that capability useful through a Founder-Simple Headquarters experience. It does not introduce production AI. Governed Executive Reasoning remains planned for Release 4.
 
 ### Release 3.1 Capability Status
 
@@ -106,7 +106,6 @@ Release 3 is the Executive Reasoning planning phase. Its Knowledge Operations di
 - **Knowledge Graph foundation:** Implemented, verified, and released
 - **Release gates:** Engineering Complete, Founder Validation, Independent Review, and Merge Approval passed
 - **Founder functional validation:** Complete, including post-remediation reopening, editing, saving, refresh persistence, readability, and console-health confirmation for the actual Ashland University Athletics Source and Ashland University School records
-- **EO-050 / CIO capability:** Not started
 - **AI implementation:** Not started
 
 | Engineering Order | Capability | Status |
@@ -128,9 +127,35 @@ Additional Release 3 scope beyond EO-046 through EO-049 remains subject to futur
 
 EO-046 through EO-049 are complete and released as a deterministic, protected foundation: canonical nodes, relationships, sources, confidence, School Intelligence, Firestore repositories, integrity checks, audit history, and the Knowledge Center Explorer at `/executive-workspace/knowledge`. The P1 integrity remediation adds strict calendar-date validation, rule-enforced canonical history maps and linked audit shape, transactional uniqueness/provenance/archive guards, and staged in-memory subject-and-audit atomicity. Automated and emulator verification is complete for the remediation.
 
-The Founder functional session with populated protected data occurred before the integrity remediation, and fixture-backed Ashland tests demonstrate representative legacy compatibility. Post-remediation Founder validation confirmed that the actual Founder-created Ashland University Athletics Source record and the actual Founder-created Ashland University School record were reopened successfully. Both records were edited and saved, refresh persistence passed, both records remained readable, and no runtime or browser-console errors were observed. Live relationship records were not separately revalidated and are not included in this confirmation. EO-046 through EO-049 are complete and released after all four release gates passed. Automated imports, AI reasoning, external search, CIO behavior, and EO-050 are not included and have not started.
+The Founder functional session with populated protected data occurred before the Knowledge Graph integrity remediation, and fixture-backed Ashland tests demonstrate representative legacy compatibility. Post-remediation Founder validation confirmed that the actual Founder-created Ashland University Athletics Source record and the actual Founder-created Ashland University School record were reopened successfully. Both records were edited and saved, refresh persistence passed, both records remained readable, and no runtime or browser-console errors were observed. Live relationship records were not separately revalidated and are not included in this confirmation. EO-046 through EO-049 are complete and released after all four release gates passed. Automated imports, AI reasoning, external search, and CIO behavior are not included and have not started. EO-050 through EO-054 are separately implemented deterministic Release 3.2 work; Engineering, targeted post-remediation Founder Validation, and final Independent Review are complete with zero P0 and zero P1 findings.
 
 Remaining technical debt is explicit. Accepted P2 debt includes aggregate-registry document-size and contention limits, repository-derived audit semantics, the approved-admin direct-client trust boundary, and qualified legacy reconstruction; registries require sharding before scale makes their limits material. Privileged Firebase Admin SDK or Console access bypassing Firestore rules remains an accepted P3 operational boundary governed by project IAM and operational controls.
+
+### Release 3.2 Founder-Simple Headquarters
+
+- **Status:** Ready to commit; Engineering, targeted post-remediation Founder Validation, and final Independent Review passed
+- **Founder workflow:** `Request -> Review -> Customize -> Approve`
+- **Canonical lifecycle:** Unchanged and authoritative
+- **AI, external APIs, external search, and autonomy:** Not included
+- **Release gates:** Engineering Complete, Founder Validation, and Independent Review passed; Founder merge-workflow authorization granted; required pull-request checks and merge pending
+
+The Founder Simplicity Principle is permanent: the Founder should not need to understand nodes, relationships, repositories, schemas, canonical records, or internal IDs to complete routine Hoop Frens work. Headquarters must translate business intent into deterministic system actions and reveal implementation details only when explicitly requested.
+
+| Engineering Order | Capability | Status |
+| --- | --- | --- |
+| EO-050 | Founder-Simple Foundation | Ready to commit; Founder Validation and Independent Review passed |
+| EO-051 | Guided Add School | Ready to commit; Founder Validation and Independent Review passed |
+| EO-052 | School Spotlight Request and Verified Information Review | Ready to commit; Founder Validation and Independent Review passed |
+| EO-053 | Deterministic School Spotlight Package | Ready to commit; Founder Validation and Independent Review passed |
+| EO-054 | Founder Customization and Approval | Ready to commit; Founder Validation and Independent Review passed |
+
+The completed engineering batch provides Founder-Simple navigation, guided Add School, a structured School Spotlight request wizard, source-backed fact review, deterministic manual content-package assembly, platform and branding customization, durable workflow drafts, and explicit Founder approval through the existing lifecycle. The request records multi-select goals and audiences, the three approved uses for one shared vertical-video plan, a primary emphasis with optional specific angle, structured media availability with optional descriptions, shot-list preference, and CTA. Recognized legacy freeform request values map into those controls, while unmatched Founder wording remains visible and editable rather than being discarded.
+
+Drafts persist in `internalFounderWorkflowDrafts`. `SchoolSpotlightPackage` is a compatible `ProductionPackage` stored and versioned in the existing `internalProductionPackages` collection. The batch does not redesign the released Knowledge Graph, fabricate facts, upload media, publish or schedule content, modify the public website, or authorize later Founder actions. EO-055 has not started.
+
+Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Final Independent Review passed with zero P0 and zero P1 findings.
+
+Additional deterministic actions—Facility Tour, Coach Feature, Player Feature, Compare Schools, Recruiting Guide, Social Campaign, New Intelligence review, a centralized content-approval queue, and an expanded Founder-Simple Executive Brief—remain product directions that require later approved Engineering Orders.
 
 ## 7. Release 4 - Planned
 
@@ -208,6 +233,8 @@ Release targets should be set only after baseline usage is measured. Headquarter
 - [Data Model](./DATA_MODEL.md)
 - [Engineering Spec](./ENGINEERING_SPEC.md)
 - [Decision Log](./DECISIONS.md)
+- [Founder-Simple Headquarters](./FOUNDER_SIMPLE.md)
+- [School Spotlight Workflow](./SCHOOL_SPOTLIGHT_WORKFLOW.md)
 - [Architecture Decisions](./architecture-decisions/ADR-001-executive-workspace.md)
 
 ## Documentation Governance

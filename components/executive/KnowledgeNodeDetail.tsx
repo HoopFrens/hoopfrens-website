@@ -142,8 +142,8 @@ export function KnowledgeNodeDetail({
               ["Location", `${node.city}, ${node.state}`],
               ["Region", formatHoopFrensRegion(node.region)],
               ["Conference", activeConferenceNames.length > 0 ? activeConferenceNames.join(" · ") : "Not connected"],
-              ["Division", node.division],
-              ["Governing Body", node.governingBody],
+              ["Division", node.division || "Not recorded"],
+              ["Governing Body", node.governingBody || "Not recorded"],
               ["Enrollment", node.enrollment?.toLocaleString() || "Not recorded"],
               ["Public or Private", node.publicOrPrivate ? formatKnowledgeLabel(node.publicOrPrivate) : "Not recorded"],
               ["In-state Tuition", node.tuition ? formatMoney(node.tuition.inState, node.tuition.currency) : "Not recorded"],
@@ -156,10 +156,12 @@ export function KnowledgeNodeDetail({
               </div>
             ))}
           </dl>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <a href={node.schoolWebsite} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-red-400 hover:text-red-300">School website <ArrowUpRight aria-hidden="true" size={14} /></a>
-            <a href={node.athleticsWebsite} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-red-400 hover:text-red-300">Athletics <ArrowUpRight aria-hidden="true" size={14} /></a>
-          </div>
+          {node.schoolWebsite || node.athleticsWebsite ? (
+            <div className="mt-5 flex flex-wrap gap-3">
+              {node.schoolWebsite ? <a href={node.schoolWebsite} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-red-400 hover:text-red-300">School website <ArrowUpRight aria-hidden="true" size={14} /></a> : null}
+              {node.athleticsWebsite ? <a href={node.athleticsWebsite} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-red-400 hover:text-red-300">Athletics <ArrowUpRight aria-hidden="true" size={14} /></a> : null}
+            </div>
+          ) : null}
           {node.recruitingNotes.length > 0 ? (
             <div className="mt-6">
               <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Recruiting Notes</h4>

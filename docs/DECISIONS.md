@@ -118,6 +118,20 @@ This sequence provides:
 
 Future AI must operate behind approved service boundaries. It must not replace canonical project state, repository rules, access control, or explicit approval requirements.
 
+## Founder Simplicity Philosophy
+
+Release 3.2 adopts the Founder Simplicity Principle:
+
+> The Founder should never be required to understand nodes, relationships, repositories, schemas, canonical records, or internal IDs to accomplish routine Hoop Frens work. Headquarters must translate business intent into system actions and expose technical concepts only when explicitly requested.
+
+The primary Founder experience is `Request -> Review -> Customize -> Approve`. This is an experience model over the canonical project lifecycle, not a replacement for it. Headquarters may simplify navigation, labels, and data entry, but it may not hide failed prerequisites, create parallel project state, weaken source or runtime validation, or approve and publish without the existing explicit actions.
+
+Routine flows lead with Add School, Build School Spotlight, and other business outcomes. Technical maintenance remains available through progressive disclosure. Founder-facing labels use Verified Source, Why We Trust This, Verification Status, and Information Needs Attention while preserving the exact canonical meaning underneath.
+
+Autosave applies to a separate owner-restricted `FounderWorkflowDraft` persisted in `internalFounderWorkflowDrafts`, never to incomplete canonical Sources, nodes, relationships, projects, or packages. Deterministic School Spotlight assembly uses a versioned `SchoolSpotlightPackage` that extends the existing `ProductionPackage` contract. Protected integrity records enforce the supported nested package keys, field types, ownership, and linkage before a noncanonical staged header is atomically activated and linked through `internalProductionPackages`; every supported vertical-video scene index is checked against the exact `id`, `heading`, `narration`, and `visualDirection` shape. It is not a Review Package or Publishing Package and cannot publish or modify the public website. [ADR-006](./architecture-decisions/ADR-006-founder-workflow-drafts-and-spotlight-packages.md) records this implemented persistence boundary. EO-050 through EO-054 are Engineering Complete. Targeted post-remediation Founder Validation and final Independent Review passed with zero P0 and zero P1 findings; required pull-request checks and the merge remain pending.
+
+School Spotlight intent is captured as structured goals, audiences, platform uses, primary emphasis, optional specific angle, media availability, optional media descriptions, shot-list preference, and CTA. Platform choices reuse one vertical-video plan and do not publish, schedule, or upload. Legacy freeform objective, audience, emphasis, and comma-separated media values remain readable: recognized phrases map to structured choices and unmatched Founder wording is retained through visible compatibility context. This is a draft-schema evolution only; it does not alter canonical School or Source records, lifecycle/version enforcement, authorization, provenance, or the four approved EO-053 outputs. EO-055 has not started.
+
 ## Knowledge Graph Foundation Philosophy
 
 Release 3.1 establishes Knowledge, Relationship, and Source as separate canonical records before any reasoning capability is introduced. Nodes identify durable entities, directed relationships connect them, and source records preserve reusable evidence and reliability. Persisted claims reference canonical source IDs; source display summaries are resolved from source records. Connected Conference, Coach, Facility, Project, and Content facts are resolved from relationships rather than caller-authored compact references. Legacy compact references remain readable only as compatibility data.
@@ -128,13 +142,13 @@ Records are archived rather than deleted, and canonical map-shaped versions plus
 
 Knowledge timestamps use one strict calendar validator before normalization. Impossible dates, invalid month/day combinations, non-leap-year February 29, malformed time values, and malformed UTC or numeric offsets are rejected rather than normalized into a different date. Local Founder-entered source dates preserve the intended instant; optional blank publication dates remain absent.
 
-The pre-remediation Founder session remains historical functional evidence, and fixture-backed tests provide automated compatibility evidence for representative Ashland legacy data. Post-remediation Founder validation confirmed that the actual Founder-created Ashland University Athletics Source record and the actual Founder-created Ashland University School record were reopened successfully. Both records were edited and saved, refresh persistence passed, both records remained readable, and no runtime or browser-console errors were observed. Live relationship records were not separately revalidated and are not included in this confirmation. Release 3.1 Capability 1 is released, EO-046 through EO-049 are complete, and Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked, and EO-050 has not started.
+The pre-remediation Founder session remains historical functional evidence, and fixture-backed tests provide automated compatibility evidence for representative Ashland legacy data. Post-remediation Founder validation confirmed that the actual Founder-created Ashland University Athletics Source record and the actual Founder-created Ashland University School record were reopened successfully. Both records were edited and saved, refresh persistence passed, both records remained readable, and no runtime or browser-console errors were observed. Live relationship records were not separately revalidated and are not included in this confirmation. Release 3.1 Capability 1 is released, EO-046 through EO-049 are complete, and Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. EO-050 through EO-054 are deterministic Release 3.2 work. Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Engineering and final Independent Review are complete with zero P0 and zero P1 findings; required pull-request checks and the merge remain pending.
 
 Accepted P2 debt for the current low-volume Founder workflow includes aggregate-registry document-size and contention limits, repository-derived audit semantics, the approved-admin direct-client trust boundary, and qualified legacy reconstruction. Registries require sharding before scale approaches their limits. Firestore rules govern client SDK writes; privileged Firebase Admin SDK and Console access bypass those rules by platform design and remain an accepted P3 operational boundary controlled through project IAM and procedure.
 
 School Intelligence uses a Knowledge Graph-specific nine-region Hoop Frens structure: Northeast, Mid-Atlantic, Southeast, Gulf States, Greater Lakes, Midwest, Texas, Southwest, and Northwest. Release 2's legacy shared Region values remain compatible and separate. State-to-region classification is deterministic, and School state and region values derive from canonical State and Region nodes rather than independent Founder input. The graph connects Conference, Coach, Facility, Project, and Content records through relationships. These records remain internal to Headquarters, inherit the existing fail-closed admin authorization boundary, and are not exposed to the public website.
 
-Knowledge Center is the manual deterministic exploration and maintenance surface at `/executive-workspace/knowledge`. AI reasoning, external search, autonomous collection, and CIO behavior remain unapproved and must enter through future Engineering Orders after this foundation is reviewed.
+Knowledge Center is the manual deterministic exploration and maintenance surface at `/executive-workspace/knowledge`. Release 3.2 Founder-Simple flows sit above that released surface without redesigning its canonical model. AI reasoning, external search, autonomous collection, and CIO behavior remain unapproved Release 4 work and must enter through future governance decisions and Engineering Orders.
 
 ## UX Principles
 
@@ -159,6 +173,9 @@ Knowledge Center is the manual deterministic exploration and maintenance surface
 - **Activity** names the conversation transcript.
 - **Executive Intelligence Timeline** names the durable, Firestore-backed project event history.
 - **Project State** refers to the canonical lifecycle and operational fields of a project.
+- **Founder-Simple** names the routine business-language experience governed by the Founder Simplicity Principle.
+- **Founder Workflow Draft** names durable, non-canonical autosave state for an incomplete guided flow.
+- **School Spotlight Package** names the deterministic, versioned `ProductionPackage` subtype used for the initial Founder-Simple output; it does not mean Review Package, Publishing Package, or published content.
 - Workspace and project type display names use title case; code enum values use lowercase kebab case where applicable.
 - Domain types use singular PascalCase names. Services and repositories use descriptive camelCase instances and PascalCase interfaces.
 - Founder-facing copy avoids implementation terms such as intent result, execution plan, orchestrator, or blocked plan.
@@ -193,8 +210,11 @@ Documentation updates are part of the Engineering Order's acceptance criteria, n
 - [Hoop Frens Platform System](./HFPS.md)
 - [Data Model](./DATA_MODEL.md)
 - [Engineering Spec](./ENGINEERING_SPEC.md)
+- [Founder-Simple Headquarters](./FOUNDER_SIMPLE.md)
+- [School Spotlight Workflow](./SCHOOL_SPOTLIGHT_WORKFLOW.md)
 - [ADR-001: Executive Workspace](./architecture-decisions/ADR-001-executive-workspace.md)
 - [ADR-002: Business Objects](./architecture-decisions/ADR-002-business-objects.md)
 - [ADR-003: Intent Engine](./architecture-decisions/ADR-003-intent-engine.md)
 - [ADR-004: Project Engine](./architecture-decisions/ADR-004-project-engine.md)
 - [ADR-005: Knowledge System](./architecture-decisions/ADR-005-knowledge-system.md)
+- [ADR-006: Founder Workflow Drafts and School Spotlight Packages](./architecture-decisions/ADR-006-founder-workflow-drafts-and-spotlight-packages.md)

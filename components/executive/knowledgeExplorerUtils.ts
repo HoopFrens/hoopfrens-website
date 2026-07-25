@@ -74,10 +74,10 @@ function schoolSearchValues(node: KnowledgeNode) {
     node.city,
     node.state,
     node.region,
-    node.division,
-    node.governingBody,
-    node.schoolWebsite,
-    node.athleticsWebsite,
+    node.division || "",
+    node.governingBody || "",
+    node.schoolWebsite || "",
+    node.athleticsWebsite || "",
     ...node.recruitingNotes,
   ];
 }

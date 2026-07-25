@@ -1,10 +1,10 @@
-# Release 3 Future AI/CIO Founder Decision Package
+# Release 4 Future AI/CIO Founder Decision Package
 
 ## Purpose
 
 This package governs future AI-enabled and Chief Intelligence Officer capabilities only. Future AI/CIO implementation may not begin until the Founder approves every applicable decision below. The recommended defaults are intentionally conservative: they establish governance, cost control, data minimization, auditability, and deterministic fallback before AI features are enabled.
 
-EO-046 through EO-049 are outside this decision gate. They implement the deterministic Release 3.1 Knowledge Graph foundation without AI, model routing, provider calls, automated ingestion, external APIs, or external search. Pending provider strategy, model routing, AI budgets, retention, outbound-data, AI-failure, and voice decisions do not block that completed Knowledge Graph work.
+EO-046 through EO-049 and EO-050 through EO-054 are outside this decision gate. EO-046 through EO-049 implement the released deterministic Release 3.1 Knowledge Graph. EO-050 through EO-054 implement the deterministic Release 3.2 Founder-Simple experience; Engineering, targeted post-remediation Founder Validation using the existing Malone University Version 2, and final Independent Review passed with zero P0 and zero P1 findings. Neither capability adds AI, model routing, provider calls, automated ingestion, external APIs, or external search. Pending provider strategy, model routing, AI budgets, retention, outbound-data, AI-failure, and voice decisions do not block deterministic Release 3 work.
 
 Record the final decision, rationale, approver, and approval date for each future AI/CIO item. Approval of this package authorizes AI/CIO architecture direction only; implementation still requires an Engineering Order, review plan, test plan, Founder validation checklist, and capability branch.
 
@@ -158,11 +158,11 @@ Record the final decision, rationale, approver, and approval date for each futur
 
 ## Approval Record
 
-Future AI/CIO architecture status remains **Awaiting Founder architecture approval** until all thirteen decisions are completed. This status does not apply to or block the deterministic EO-046 through EO-049 Knowledge Graph.
+Future Release 4 AI/CIO architecture status remains **Awaiting Founder architecture approval** until all thirteen decisions are completed. This status does not apply to or block the deterministic EO-046 through EO-049 Knowledge Graph or EO-050 through EO-054 Founder-Simple work.
 
 - Founder: Pending
 - Approval date: Pending
 - Approved decisions or amendment reference: Pending
 - Approved monthly budget: Pending
 - Approved per-request limit: Pending
-- Future AI/CIO implementation Engineering Order: Not created; EO-050 has not started
+- Future Release 4 AI/CIO implementation Engineering Order: Not created

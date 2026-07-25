@@ -75,4 +75,7 @@ export interface Project extends ProjectState {
   creationRequestId?: string;
   activeProductionVersion?: number | null;
   productionReadinessInvalidatedAt?: ISODateString | null;
+  activeSchoolSpotlightPackageId?: EntityId | null;
+  approvedSchoolSpotlightPackageId?: EntityId | null;
+  approvedSchoolSpotlightPackageVersion?: number | null;
 }

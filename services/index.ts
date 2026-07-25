@@ -10,6 +10,7 @@ export * from "./executivePrioritizationService";
 export * from "./executiveRecommendationService";
 export * from "./executiveIntelligenceService";
 export * from "./founderDailyBriefService";
+export * from "./founderSimpleService";
 export * from "./founderWorkloadService";
 export * from "./executionPlanningService";
 export * from "./executiveBriefService";

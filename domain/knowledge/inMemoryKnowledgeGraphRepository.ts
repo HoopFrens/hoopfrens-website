@@ -9,6 +9,8 @@ import {
 import type {
   KnowledgeGraphRepository,
   KnowledgeMutationContext,
+  KnowledgeSchoolBundleCreateInput,
+  KnowledgeSchoolBundleResult,
 } from "./repository";
 import {
   deriveCanonicalSourceReferences,
@@ -64,6 +66,8 @@ export interface KnowledgeGraphStore {
   readAuditEvents(): KnowledgeAuditEvent[];
   writeAuditEvents(events: KnowledgeAuditEvent[]): void;
   replaceState(state: KnowledgeGraphStoreState): void;
+  /** Serializes staged multi-record mutations across every repository sharing this store. */
+  runExclusive<T>(operation: () => Promise<T>): Promise<T>;
 }
 
 export interface KnowledgeGraphStoreState {
@@ -94,6 +98,13 @@ export function createVolatileKnowledgeGraphStore(
   let relationships = clone(initialRelationships);
   let sources = clone(initialSources);
   let auditEvents = clone(initialAuditEvents);
+  let exclusiveQueue: Promise<void> = Promise.resolve();
+
+  function runExclusive<T>(operation: () => Promise<T>) {
+    const result = exclusiveQueue.then(operation, operation);
+    exclusiveQueue = result.then(() => undefined, () => undefined);
+    return result;
+  }
 
   return {
     readNodes: () => clone(nodes),
@@ -114,6 +125,7 @@ export function createVolatileKnowledgeGraphStore(
       sources = nextSources;
       auditEvents = nextAuditEvents;
     },
+    runExclusive,
   };
 }
 
@@ -159,10 +171,10 @@ function schoolVersionData(node: KnowledgeNode): SchoolKnowledgeVersionData | un
     region: node.region,
     regionNodeId: node.regionNodeId,
     conference: node.conference,
-    division: node.division,
-    governingBody: node.governingBody,
-    schoolWebsite: node.schoolWebsite,
-    athleticsWebsite: node.athleticsWebsite,
+    ...(node.division ? { division: node.division } : {}),
+    ...(node.governingBody ? { governingBody: node.governingBody } : {}),
+    ...(node.schoolWebsite ? { schoolWebsite: node.schoolWebsite } : {}),
+    ...(node.athleticsWebsite ? { athleticsWebsite: node.athleticsWebsite } : {}),
     ...(node.enrollment === undefined ? {} : { enrollment: node.enrollment }),
     ...(node.tuition ? { tuition: node.tuition } : {}),
     ...(node.publicOrPrivate ? { publicOrPrivate: node.publicOrPrivate } : {}),
@@ -536,6 +548,109 @@ export function createInMemoryKnowledgeGraphRepository(
     });
   }
 
+  async function performSchoolBundle(
+    bundle: KnowledgeSchoolBundleCreateInput,
+    context: KnowledgeMutationContext,
+  ) {
+    const mutation = requireMutationContext(context);
+    const expectedWorkspaceId = bundle.source.workspaceId;
+    if (!expectedWorkspaceId
+      || bundle.stateNode.workspaceId !== expectedWorkspaceId
+      || bundle.regionNode.workspaceId !== expectedWorkspaceId
+      || bundle.schoolNode.workspaceId !== expectedWorkspaceId
+      || bundle.stateNode.type !== KnowledgeNodeType.State
+      || bundle.regionNode.type !== KnowledgeNodeType.Region
+      || bundle.schoolNode.type !== KnowledgeNodeType.School) {
+      throw new KnowledgeValidationError("A School bundle must use one workspace and canonical School geography types.");
+    }
+
+    const stagedStore = createVolatileKnowledgeGraphStore(
+      store.readNodes(),
+      store.readRelationships(),
+      store.readSources(),
+      store.readAuditEvents(),
+    );
+    const stagedRepository = createInMemoryKnowledgeGraphRepository(stagedStore, {
+      now: clock,
+      beforeAuditWrite: options.beforeAuditWrite,
+    });
+    const existingSchool = (await stagedRepository.listNodes(expectedWorkspaceId)).find((node) => (
+      node.type === KnowledgeNodeType.School
+      && node.status === KnowledgeStatus.Active
+      && normalizeCanonicalKnowledgeName(node.name) === normalizeCanonicalKnowledgeName(bundle.schoolNode.name)
+    ));
+    if (existingSchool && isSchoolKnowledgeNode(existingSchool)) {
+      return { school: existingSchool, created: false } satisfies KnowledgeSchoolBundleResult;
+    }
+
+    const source = await stagedRepository.createSource(bundle.source, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.source,
+    });
+    const stateNode = await stagedRepository.createNode({
+      ...bundle.stateNode,
+      sourceIds: [source.id],
+    } as KnowledgeNodeCreateInput, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.stateNode,
+    });
+    const regionNode = await stagedRepository.createNode({
+      ...bundle.regionNode,
+      sourceIds: [source.id],
+    } as KnowledgeNodeCreateInput, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.regionNode,
+    });
+    const schoolNode = await stagedRepository.createNode({
+      ...bundle.schoolNode,
+      sourceIds: [source.id],
+      stateNodeId: stateNode.id,
+      regionNodeId: regionNode.id,
+    } as KnowledgeNodeCreateInput, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.schoolNode,
+    });
+    if (!isSchoolKnowledgeNode(schoolNode)) {
+      throw new KnowledgeValidationError("The canonical School bundle did not resolve to a School node.");
+    }
+    await stagedRepository.createRelationship({
+      ...bundle.stateRelationship,
+      id: `relationship-${schoolNode.id}-${stateNode.id}`,
+      workspaceId: expectedWorkspaceId,
+      fromNodeId: schoolNode.id,
+      toNodeId: stateNode.id,
+      relationshipType: KnowledgeRelationshipType.SchoolLocatedInState,
+      sourceIds: [source.id],
+    }, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.stateRelationship,
+    });
+    await stagedRepository.createRelationship({
+      ...bundle.regionRelationship,
+      id: `relationship-${schoolNode.id}-${regionNode.id}`,
+      workspaceId: expectedWorkspaceId,
+      fromNodeId: schoolNode.id,
+      toNodeId: regionNode.id,
+      relationshipType: KnowledgeRelationshipType.SchoolLocatedInRegion,
+      sourceIds: [source.id],
+    }, {
+      actorId: mutation.actorId,
+      reason: bundle.reasons.regionRelationship,
+    });
+
+    store.replaceState({
+      nodes: stagedStore.readNodes(),
+      relationships: stagedStore.readRelationships(),
+      sources: stagedStore.readSources(),
+      auditEvents: stagedStore.readAuditEvents(),
+    });
+    const persisted = hydratedNodes().find((node) => node.id === schoolNode.id);
+    if (!persisted || !isSchoolKnowledgeNode(persisted)) {
+      throw new KnowledgeValidationError("The canonical School bundle could not be reopened.");
+    }
+    return { school: persisted, created: true } satisfies KnowledgeSchoolBundleResult;
+  }
+
   return {
     async listNodes(workspaceId) {
       return hydratedNodes().filter((node) => node.workspaceId === workspaceId)
@@ -544,6 +659,10 @@ export function createInMemoryKnowledgeGraphRepository(
 
     async getNodeById(nodeId) {
       return hydratedNodes().find((node) => node.id === nodeId) || null;
+    },
+
+    async createSchoolBundle(bundle, context) {
+      return store.runExclusive(() => performSchoolBundle(bundle, context));
     },
 
     async createNode(input: KnowledgeNodeCreateInput, context: KnowledgeMutationContext) {

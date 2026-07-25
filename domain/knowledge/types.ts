@@ -111,10 +111,10 @@ export interface SchoolKnowledgeVersionData {
   region: KnowledgeRegion;
   regionNodeId: EntityId;
   conference: KnowledgeNodeReference | null;
-  division: string;
-  governingBody: string;
-  schoolWebsite: string;
-  athleticsWebsite: string;
+  division?: string;
+  governingBody?: string;
+  schoolWebsite?: string;
+  athleticsWebsite?: string;
   enrollment?: number;
   tuition?: SchoolTuition;
   publicOrPrivate?: "public" | "private";

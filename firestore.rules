@@ -12,11 +12,25 @@ service cloud.firestore {
     }
 
     function publishedRead() {
-      return resource.data.published == true;
+      return resource.data.get('published', false) == true;
     }
 
     function isInternalKnowledgeCollection(collectionName) {
       return collectionName.matches('internalKnowledge.*');
+    }
+
+    function isRestrictedInternalCollection(collectionName) {
+      return isInternalKnowledgeCollection(collectionName)
+        || collectionName == 'internalFounderWorkflowDrafts'
+        || collectionName == 'internalProductionPackages'
+        || collectionName == 'internalSchoolSpotlightPackageFacts'
+        || collectionName == 'internalSchoolSpotlightPackageFactsA'
+        || collectionName == 'internalSchoolSpotlightPackageFactsB'
+        || collectionName == 'internalSchoolSpotlightPackageContent'
+        || collectionName == 'internalSchoolSpotlightPackageDelivery'
+        || collectionName == 'internalSchoolSpotlightPackageRequest'
+        || collectionName == 'internalSchoolSpotlightPackageCustomization'
+        || collectionName == 'internalProjects';
     }
 
     function isIdentifier(value) {
@@ -71,14 +85,6 @@ service cloud.firestore {
         && validIdentifierListItem(value, 3);
     }
 
-    function validIdentifierListEight(value, maximumSize) {
-      return validIdentifierList(value, maximumSize)
-        && validIdentifierListItem(value, 4)
-        && validIdentifierListItem(value, 5)
-        && validIdentifierListItem(value, 6)
-        && validIdentifierListItem(value, 7);
-    }
-
     function validTextListItem(value, index) {
       return value.size() <= index || isNonEmptyString(value[index]);
     }
@@ -89,14 +95,6 @@ service cloud.firestore {
         && validTextListItem(value, 1)
         && validTextListItem(value, 2)
         && validTextListItem(value, 3);
-    }
-
-    function validTextList(value, maximumSize) {
-      return validSmallTextList(value, maximumSize)
-        && validTextListItem(value, 4)
-        && validTextListItem(value, 5)
-        && validTextListItem(value, 6)
-        && validTextListItem(value, 7);
     }
 
     function isKnowledgeStatus(value) {
@@ -118,54 +116,11 @@ service cloud.firestore {
         || value == 'content';
     }
 
-    function isKnowledgeCategory(value) {
-      return value == 'institution' || value == 'person' || value == 'geography'
-        || value == 'organization' || value == 'work' || value == 'content';
-    }
-
-    function categoryForNodeType(value) {
-      return {
-        'school': 'institution',
-        'coach': 'person',
-        'conference': 'organization',
-        'player': 'person',
-        'facility': 'organization',
-        'region': 'geography',
-        'state': 'geography',
-        'organization': 'organization',
-        'project': 'work',
-        'content': 'content'
-      }.get(value, '');
-    }
-
     function isKnowledgeRegion(value) {
       return value in [
         'northeast', 'mid_atlantic', 'southeast', 'gulf_states',
         'greater_lakes', 'midwest', 'texas', 'southwest', 'northwest'
       ];
-    }
-
-    function isApprovedRegionName(value) {
-      return value in [
-        'Northeast', 'Mid-Atlantic', 'Southeast', 'Gulf States',
-        'Greater Lakes', 'Midwest', 'Texas', 'Southwest', 'Northwest',
-        'northeast', 'mid_atlantic', 'southeast', 'gulf_states',
-        'greater_lakes', 'midwest', 'texas', 'southwest', 'northwest'
-      ];
-    }
-
-    function isRelationshipType(value) {
-      return value == 'SCHOOL_BELONGS_TO_CONFERENCE'
-        || value == 'SCHOOL_LOCATED_IN_STATE'
-        || value == 'SCHOOL_LOCATED_IN_REGION'
-        || value == 'SCHOOL_HAS_COACH'
-        || value == 'SCHOOL_HAS_FACILITY'
-        || value == 'PROJECT_ABOUT_SCHOOL'
-        || value == 'CONTENT_ABOUT_SCHOOL'
-        || value == 'COACH_WORKS_AT_SCHOOL'
-        || value == 'CONFERENCE_GOVERNS_SCHOOL'
-        || value == 'PLAYER_CONNECTED_TO_SCHOOL'
-        || value == 'FACILITY_BELONGS_TO_SCHOOL';
     }
 
     function isExclusiveRelationshipType(value) {
@@ -188,38 +143,6 @@ service cloud.firestore {
         : value == 'PROJECT_ABOUT_SCHOOL' ? 'project-school'
         : value == 'CONTENT_ABOUT_SCHOOL' ? 'content-school'
         : '';
-    }
-
-    function relationshipFromType(value) {
-      return {
-        'SCHOOL_BELONGS_TO_CONFERENCE': 'school',
-        'CONFERENCE_GOVERNS_SCHOOL': 'conference',
-        'SCHOOL_LOCATED_IN_STATE': 'school',
-        'SCHOOL_LOCATED_IN_REGION': 'school',
-        'SCHOOL_HAS_COACH': 'school',
-        'COACH_WORKS_AT_SCHOOL': 'coach',
-        'SCHOOL_HAS_FACILITY': 'school',
-        'FACILITY_BELONGS_TO_SCHOOL': 'facility',
-        'PROJECT_ABOUT_SCHOOL': 'project',
-        'CONTENT_ABOUT_SCHOOL': 'content',
-        'PLAYER_CONNECTED_TO_SCHOOL': 'player'
-      }.get(value, '');
-    }
-
-    function relationshipToType(value) {
-      return {
-        'SCHOOL_BELONGS_TO_CONFERENCE': 'conference',
-        'CONFERENCE_GOVERNS_SCHOOL': 'school',
-        'SCHOOL_LOCATED_IN_STATE': 'state',
-        'SCHOOL_LOCATED_IN_REGION': 'region',
-        'SCHOOL_HAS_COACH': 'coach',
-        'COACH_WORKS_AT_SCHOOL': 'school',
-        'SCHOOL_HAS_FACILITY': 'facility',
-        'FACILITY_BELONGS_TO_SCHOOL': 'school',
-        'PROJECT_ABOUT_SCHOOL': 'school',
-        'CONTENT_ABOUT_SCHOOL': 'school',
-        'PLAYER_CONNECTED_TO_SCHOOL': 'school'
-      }.get(value, '');
     }
 
     function relationshipUsesReverseCanonicalDirection(value) {
@@ -274,25 +197,6 @@ service cloud.firestore {
     function mapHistoryPreserved(nextHistory, previousHistory) {
       let changes = nextHistory.diff(previousHistory);
       return changes.removedKeys().size() == 0 && changes.changedKeys().size() == 0;
-    }
-
-    function historyAddedOne(nextHistory, previousHistory) {
-      return historyPreserved(nextHistory, previousHistory)
-        && ((previousHistory is list && nextHistory.size() == previousHistory.size() + 1)
-          || (previousHistory is map && nextHistory.size() == previousHistory.size() + 1));
-    }
-
-    function historyUnchanged(nextHistory, previousHistory) {
-      return (previousHistory is list && nextHistory is map
-          && nextHistory.size() == previousHistory.size()
-          && legacyHistoryPreserved(nextHistory, previousHistory))
-        || (previousHistory is map && nextHistory == previousHistory);
-    }
-
-    function historyAdvancedAtMostOne(nextHistory, previousHistory) {
-      return historyPreserved(nextHistory, previousHistory)
-        && (nextHistory.size() == previousHistory.size()
-          || nextHistory.size() == previousHistory.size() + 1);
     }
 
     function validLatestVersion(data) {
@@ -724,37 +628,6 @@ service cloud.firestore {
         : '';
     }
 
-    function canonicalStateCode(value) {
-      return {
-        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
-        'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
-        'District of Columbia': 'DC', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI',
-        'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
-        'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
-        'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
-        'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
-        'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
-        'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
-        'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI',
-        'South Carolina': 'SC', 'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX',
-        'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
-        'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
-      }.get(value, value);
-    }
-
-    function regionNameMatches(value, region) {
-      return value == region
-        || (region == 'northeast' && value == 'Northeast')
-        || (region == 'mid_atlantic' && value == 'Mid-Atlantic')
-        || (region == 'southeast' && value == 'Southeast')
-        || (region == 'gulf_states' && value == 'Gulf States')
-        || (region == 'greater_lakes' && value == 'Greater Lakes')
-        || (region == 'midwest' && value == 'Midwest')
-        || (region == 'texas' && value == 'Texas')
-        || (region == 'southwest' && value == 'Southwest')
-        || (region == 'northwest' && value == 'Northwest');
-    }
-
     function validOptionalNonNegativeNumber(data, field) {
       return !(field in data)
         || ((data[field] is int || data[field] is float) && data[field] >= 0);
@@ -772,82 +645,12 @@ service cloud.firestore {
             || isNonEmptyString(data.tuition.academicYear)));
     }
 
-    function validSchoolData(data) {
-      return data.keys().hasAll([
-          'officialName', 'city', 'state', 'stateNodeId', 'region', 'regionNodeId',
-          'conference', 'division', 'governingBody', 'schoolWebsite', 'athleticsWebsite',
-          'facilities', 'coaches', 'recruitingNotes', 'connectedProjectIds',
-          'connectedContentIds'
-        ])
-        && isNonEmptyString(data.officialName) && isNonEmptyString(data.city)
-        && isNonEmptyString(data.state) && isIdentifier(data.stateNodeId)
-        && isKnowledgeRegion(data.region) && schoolRegionForState(data.state) == data.region
-        && isIdentifier(data.regionNodeId)
-        && data.conference == null
-        && isNonEmptyString(data.division) && isNonEmptyString(data.governingBody)
-        && validHttpUrl(data.schoolWebsite) && validHttpUrl(data.athleticsWebsite)
-        && data.facilities is list && data.facilities.size() == 0
-        && data.coaches is list && data.coaches.size() == 0
-        && validStringList(data.recruitingNotes, 8)
-        && data.connectedProjectIds is list && data.connectedProjectIds.size() == 0
-        && data.connectedContentIds is list && data.connectedContentIds.size() == 0
-        && optionalString(data, 'nickname')
-        && validOptionalNonNegativeNumber(data, 'enrollment')
-        && validSchoolTuition(data)
-        && (!data.keys().hasAny(['publicOrPrivate'])
-          || data.publicOrPrivate in ['public', 'private'])
-        && (!data.keys().hasAny(['lastVerifiedAt'])
-          || data.lastVerifiedAt is string || data.lastVerifiedAt is timestamp);
-    }
-
-    function validSchoolReferenceNodes(data) {
-      let statePath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.stateNodeId);
-      let regionPath = /databases/$(database)/documents/internalKnowledgeNodes/$(data.regionNodeId);
-      let stateNode = getAfter(statePath);
-      let regionNode = getAfter(regionPath);
-      return existsAfter(statePath) && existsAfter(regionPath)
-        && stateNode.data.workspaceId == data.workspaceId
-        && regionNode.data.workspaceId == data.workspaceId
-        && stateNode.data.type == 'state' && regionNode.data.type == 'region'
-        && (data.status == 'archived'
-          || (stateNode.data.status == 'active' && regionNode.data.status == 'active'));
-    }
-
-    function schoolFieldsAbsent(data) {
-      return !data.keys().hasAny([
-        'officialName', 'nickname', 'city', 'state', 'stateNodeId', 'region',
-        'regionNodeId', 'conference', 'division', 'governingBody', 'schoolWebsite',
-        'athleticsWebsite', 'enrollment', 'tuition', 'publicOrPrivate', 'facilities',
-        'coaches', 'recruitingNotes', 'connectedProjectIds', 'connectedContentIds',
-        'lastVerifiedAt'
-      ]);
-    }
-
     function validNodeSubtype(data) {
       return data.type == 'project'
           ? isIdentifier(data.projectId)
           : (data.type == 'content'
             ? (isIdentifier(data.contentId) && optionalHttpUrl(data, 'contentUrl'))
             : true);
-    }
-
-    function schoolSnapshotMatchesNode(snapshot, data) {
-      return snapshot.officialName == data.officialName
-        && snapshot.get('nickname', null) == data.get('nickname', null)
-        && snapshot.city == data.city && snapshot.state == data.state
-        && snapshot.stateNodeId == data.stateNodeId && snapshot.region == data.region
-        && snapshot.regionNodeId == data.regionNodeId && snapshot.conference == data.conference
-        && snapshot.division == data.division && snapshot.governingBody == data.governingBody
-        && snapshot.schoolWebsite == data.schoolWebsite
-        && snapshot.athleticsWebsite == data.athleticsWebsite
-        && snapshot.get('enrollment', null) == data.get('enrollment', null)
-        && snapshot.get('tuition', null) == data.get('tuition', null)
-        && snapshot.get('publicOrPrivate', null) == data.get('publicOrPrivate', null)
-        && snapshot.facilities == data.facilities && snapshot.coaches == data.coaches
-        && snapshot.recruitingNotes == data.recruitingNotes
-        && snapshot.connectedProjectIds == data.connectedProjectIds
-        && snapshot.connectedContentIds == data.connectedContentIds
-        && snapshot.get('lastVerifiedAt', null) == data.get('lastVerifiedAt', null);
     }
 
     function validNodeVersionSnapshot(data) {
@@ -1247,9 +1050,1132 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function validFounderSchoolDraft(data) {
+      return data is map
+        && data.keys().size() == 3
+          + (data.keys().hasAny(['schoolWebsite']) ? 1 : 0)
+          + (data.keys().hasAny(['athleticsWebsite']) ? 1 : 0)
+          + (data.keys().hasAny(['governingBody']) ? 1 : 0)
+          + (data.keys().hasAny(['division']) ? 1 : 0)
+        && boundedString(data.officialName, 4096)
+        && boundedString(data.city, 4096)
+        && boundedString(data.state, 4096)
+        && optionalString(data, 'schoolWebsite')
+        && optionalString(data, 'athleticsWebsite')
+        && optionalString(data, 'governingBody')
+        && optionalString(data, 'division');
+    }
+
+    function validSpotlightPlatforms(values) {
+      return validStringList(values, 3)
+        && values.hasOnly(['instagram-reel', 'tiktok', 'youtube-short']);
+    }
+
+    function validSpotlightGoals(values) {
+      return validStringList(values, 10)
+        && values.hasOnly([
+          'introduce-school', 'showcase-facilities', 'explain-basketball-program',
+          'highlight-student-athlete-experience', 'help-recruits-evaluate',
+          'correct-misconception', 'promote-specific-strength',
+          'tell-unique-school-story', 'increase-awareness', 'other'
+        ]);
+    }
+
+    function validSpotlightAudiences(values) {
+      return validStringList(values, 9)
+        && values.hasOnly([
+          'players', 'parents-and-families', 'high-school-coaches',
+          'college-coaches', 'recruits', 'current-students', 'alumni',
+          'basketball-fans', 'other'
+        ]);
+    }
+
+    function validSpotlightMedia(values) {
+      return validStringList(values, 10)
+        && values.hasOnly([
+          'school-provided-photos', 'campus-photos', 'facility-photos',
+          'game-footage', 'practice-footage', 'player-photos', 'coach-photos',
+          'logos', 'no-media-yet', 'other'
+        ]);
+    }
+
+    function validFounderRequest(data) {
+      return data is map
+        && data.keys().hasOnly([
+          'objective', 'goals', 'goalOther', 'supplementalGoalText',
+          'audience', 'audiences', 'audienceOther', 'platforms',
+          'centralEmphasis', 'primaryEmphasis', 'emphasisOther',
+          'specificAngle', 'availableMedia', 'media', 'mediaOther',
+          'mediaDescription', 'needShotList', 'callToAction'
+        ])
+        && data.keys().size() == 10
+          + (data.keys().hasAny(['goalOther']) ? 1 : 0)
+          + (data.keys().hasAny(['supplementalGoalText']) ? 1 : 0)
+          + (data.keys().hasAny(['audienceOther']) ? 1 : 0)
+          + (data.keys().hasAny(['primaryEmphasis']) ? 1 : 0)
+          + (data.keys().hasAny(['emphasisOther']) ? 1 : 0)
+          + (data.keys().hasAny(['specificAngle']) ? 1 : 0)
+          + (data.keys().hasAny(['mediaOther']) ? 1 : 0)
+          + (data.keys().hasAny(['mediaDescription']) ? 1 : 0)
+        && data.media is list
+        && (!('no-media-yet' in data.media)
+          || data.media.size() == 1)
+        && boundedString(data.objective, 4096)
+        && boundedString(data.audience, 4096)
+        && boundedString(data.centralEmphasis, 4096)
+        && boundedString(data.callToAction, 4096)
+        && optionalString(data, 'goalOther')
+        && optionalString(data, 'supplementalGoalText')
+        && optionalString(data, 'audienceOther')
+        && optionalString(data, 'emphasisOther')
+        && optionalString(data, 'specificAngle')
+        && optionalString(data, 'mediaOther')
+        && optionalString(data, 'mediaDescription')
+        && validSpotlightPlatforms(data.platforms)
+        && validSpotlightGoals(data.goals)
+        && validSpotlightAudiences(data.audiences)
+        && (!data.keys().hasAny(['primaryEmphasis'])
+          || data.primaryEmphasis in [
+            'facilities', 'basketball-program', 'coaching-staff',
+            'academic-opportunities', 'campus-experience', 'location',
+            'recruiting-opportunity', 'player-development', 'affordability',
+            'school-culture', 'other'
+          ])
+        && validSpotlightMedia(data.media)
+        && data.needShotList is bool
+        && validStringList(data.availableMedia, 16);
+    }
+
+    function validFounderCustomization(data) {
+      return data is map
+        && data.keys().hasOnly([
+          'tone', 'length', 'hook', 'emphasis', 'callToAction',
+          'mediaAvailability', 'brandingPreset', 'verticalVideoScript',
+          'instagramCaption', 'shotList', 'rightsConfirmed'
+        ])
+        && data.keys().size() == 11
+        && data.tone in ['clear-and-confident', 'energetic', 'community-focused']
+        && data.length in ['short', 'standard', 'extended']
+        && data.brandingPreset in ['headquarters', 'school-first', 'community-story']
+        && boundedString(data.hook, 4096)
+        && boundedString(data.emphasis, 4096)
+        && boundedString(data.callToAction, 4096)
+        && boundedString(data.verticalVideoScript, 20000)
+        && boundedString(data.instagramCaption, 10000)
+        && validStringList(data.mediaAvailability, 16)
+        && validStringList(data.shotList, 32)
+        && data.rightsConfirmed is bool;
+    }
+
+    function spotlightRequestMatches(left, right) {
+      return left == right;
+    }
+
+    function spotlightCustomizationMatches(left, right) {
+      return left == right;
+    }
+
+    function isSchoolSpotlightPackage(data) {
+      return data.keys().hasAny(['packageKind'])
+        && data.packageKind == 'school-spotlight';
+    }
+
+    function validSpotlightEvidenceShape(data) {
+      return data is map
+        && data.keys().hasOnly([
+          'sourceId', 'sourceVersion', 'title', 'publisher', 'reliability', 'accessedAt'
+        ])
+        && data.keys().size() == 5
+          + (data.keys().hasAny(['publisher']) ? 1 : 0)
+        && isIdentifier(data.sourceId)
+        && data.sourceVersion is int && data.sourceVersion > 0
+        && boundedString(data.title, 4096) && data.title.size() > 0
+        && optionalString(data, 'publisher')
+        && isSourceReliability(data.reliability)
+        && boundedString(data.accessedAt, 64) && data.accessedAt.size() > 0;
+    }
+
+    function validSpotlightEvidenceAt(values, index) {
+      return values.size() <= index || validSpotlightEvidenceShape(values[index]);
+    }
+
+    function validSpotlightEvidenceList(values) {
+      return values is list && values.size() <= 2
+        && validSpotlightEvidenceAt(values, 0)
+        && validSpotlightEvidenceAt(values, 1);
+    }
+
+    function spotlightEvidenceMatchesSource(data, workspaceId) {
+      let sourcePath = /databases/$(database)/documents/internalKnowledgeSources/$(data.sourceId);
+      let source = getAfter(sourcePath).data;
+      return existsAfter(sourcePath)
+        && source.id == data.sourceId
+        && source.workspaceId == workspaceId
+        && source.status == 'active'
+        && source.version == data.sourceVersion;
+    }
+
+    function spotlightEvidenceLinkedAt(values, index, workspaceId) {
+      return values.size() <= index || spotlightEvidenceMatchesSource(values[index], workspaceId);
+    }
+
+    function validSpotlightEvidenceLinkage(values, workspaceId) {
+      return spotlightEvidenceLinkedAt(values, 0, workspaceId)
+        && spotlightEvidenceLinkedAt(values, 1, workspaceId);
+    }
+
+    function validSpotlightFactShape(data, verificationSourceIds) {
+      return data is map
+        && data.keys().hasOnly([
+          'id', 'category', 'label', 'value', 'status',
+          'founderAuthored', 'sourceIds', 'position'
+        ])
+        && data.keys().size() == 8
+        && data.id is string && data.id.size() > 0
+        && data.category is string && data.category.size() > 0
+        && data.label is string && data.label.size() > 0
+        && data.value is string && data.value.size() > 0
+        && data.status in [
+          'verified', 'supported', 'needs-confirmation', 'conflicting', 'not-available'
+        ]
+        && data.founderAuthored is bool
+        && validStringList(data.sourceIds, 2)
+        && data.sourceIds.hasOnly(verificationSourceIds)
+        && data.position is int && data.position >= 0 && data.position <= 64;
+    }
+
+    function validSpotlightFactAt(values, verificationSourceIds, index) {
+      return values.size() <= index || validSpotlightFactShape(values[index], verificationSourceIds);
+    }
+
+    function validSpotlightScene(data) {
+      return data is map
+        && data.keys().hasOnly(['id', 'heading', 'narration', 'visualDirection'])
+        && data.keys().size() == 4
+        && data.id is string
+        && data.heading is string
+        && data.narration is string
+        && data.visualDirection is string;
+    }
+
+    function validSpotlightSceneAt(values, index) {
+      return values.size() <= index || validSpotlightScene(values[index]);
+    }
+
+    function validSpotlightSceneList(values) {
+      return values is list && values.size() >= 2 && values.size() <= 10
+        && validSpotlightSceneAt(values, 0)
+        && validSpotlightSceneAt(values, 1)
+        && validSpotlightSceneAt(values, 2)
+        && validSpotlightSceneAt(values, 3)
+        && validSpotlightSceneAt(values, 4)
+        && validSpotlightSceneAt(values, 5)
+        && validSpotlightSceneAt(values, 6)
+        && validSpotlightSceneAt(values, 7)
+        && validSpotlightSceneAt(values, 8)
+        && validSpotlightSceneAt(values, 9);
+    }
+
+    function validSpotlightChecklists(data) {
+      return data.productionChecklist == [
+          {
+            'id': 'spotlight-production-1',
+            'label': 'Selected facts are represented in the package',
+            'required': true,
+            'completed': true
+          },
+          {
+            'id': 'spotlight-production-2',
+            'label': 'Vertical-video structure and Instagram caption are complete',
+            'required': true,
+            'completed': true
+          }
+        ]
+        && data.mediaChecklist == [
+          {
+            'id': 'spotlight-media-1',
+            'label': 'Photo and video shot list is complete',
+            'required': true,
+            'completed': true
+          }
+        ]
+        && data.graphicsNeeded == [
+          {
+            'id': 'spotlight-graphics-1',
+            'label': 'Hoop Frens brand treatment is selected',
+            'required': true,
+            'completed': true
+          }
+        ]
+        && data.publishingRequirements == [
+          {
+            'id': 'spotlight-rights-confirmed',
+            'label': 'Media rights are confirmed',
+            'required': true,
+            'completed': data.rightsConfirmed
+          }
+        ]
+        && data.qaChecklist == [
+          {
+            'id': 'spotlight-qa-1',
+            'label': 'Unsupported facts remain excluded or explicitly Founder-authored',
+            'required': true,
+            'completed': true
+          },
+          {
+            'id': 'spotlight-qa-2',
+            'label': 'Source and verification package is attached',
+            'required': true,
+            'completed': true
+          }
+        ];
+    }
+
+    function validSpotlightTextAt(values, index) {
+      return values.size() <= index || boundedString(values[index], 20000);
+    }
+
+    function validSpotlightTextList(values, maximumSize) {
+      return values is list && values.size() <= maximumSize
+        && validSpotlightTextAt(values, 0)
+        && validSpotlightTextAt(values, 1)
+        && validSpotlightTextAt(values, 2)
+        && validSpotlightTextAt(values, 3)
+        && (maximumSize <= 4 || validSpotlightTextAt(values, 4))
+        && (maximumSize <= 5 || validSpotlightTextAt(values, 5))
+        && (maximumSize <= 6 || validSpotlightTextAt(values, 6))
+        && (maximumSize <= 7 || validSpotlightTextAt(values, 7));
+    }
+
+    function spotlightFactsIntegrityPath(packageId) {
+      return /databases/$(database)/documents/internalSchoolSpotlightPackageFacts/$(packageId);
+    }
+
+    function spotlightContentIntegrityPath(packageId) {
+      return /databases/$(database)/documents/internalSchoolSpotlightPackageContent/$(packageId);
+    }
+
+    function spotlightDeliveryIntegrityPath(packageId) {
+      return /databases/$(database)/documents/internalSchoolSpotlightPackageDelivery/$(packageId);
+    }
+
+    function spotlightFactPartIntegrityPath(packageId, part) {
+      return part == 1
+        ? /databases/$(database)/documents/internalSchoolSpotlightPackageFactsA/$(packageId + '-1')
+        : /databases/$(database)/documents/internalSchoolSpotlightPackageFactsB/$(packageId + '-2');
+    }
+
+    function spotlightRequestIntegrityPath(packageId) {
+      return /databases/$(database)/documents/internalSchoolSpotlightPackageRequest/$(packageId);
+    }
+
+    function spotlightCustomizationIntegrityPath(packageId) {
+      return /databases/$(database)/documents/internalSchoolSpotlightPackageCustomization/$(packageId);
+    }
+
+    function validSpotlightFactsIntegrity(data, documentId) {
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'selectedFactCount',
+          'selectedFactIds', 'selectedFactPositions',
+          'verificationSourceIds', 'verificationSources'
+        ])
+        && data.packageId == documentId
+        && isIdentifier(data.workspaceId)
+        && data.ownerId == request.auth.uid
+        && data.selectedFactCount is int
+        && data.selectedFactCount > 0 && data.selectedFactCount <= 8
+        && validStringList(data.selectedFactIds, 8)
+        && data.selectedFactIds.size() == data.selectedFactCount
+        // Fact-part documents validate each position as an integer; here we only
+        // enforce the canonical count and uniqueness to avoid repeated evaluation
+        // for the maximum eight-fact request.
+        && data.selectedFactPositions is list
+        && data.selectedFactPositions.size() == data.selectedFactCount
+        && data.selectedFactPositions.size() <= 8
+        && validSpotlightEvidenceList(data.verificationSources)
+        && validSpotlightEvidenceLinkage(data.verificationSources, data.workspaceId)
+        && validStringList(data.verificationSourceIds, 2)
+        && data.verificationSourceIds.size() == data.verificationSources.size()
+        && spotlightEvidenceIdsMatch(data.verificationSources, data.verificationSourceIds, 0)
+        && spotlightEvidenceIdsMatch(data.verificationSources, data.verificationSourceIds, 1);
+    }
+
+    function spotlightEvidenceIdsMatch(sources, sourceIds, index) {
+      return sources.size() <= index || sourceIds[index] == sources[index].sourceId;
+    }
+
+    function validSpotlightPositionAt(values, index) {
+      return values.size() <= index
+        || (values[index] is int && values[index] >= 0 && values[index] <= 64);
+    }
+
+    function validSpotlightPositionList(values, expectedSize) {
+      return values is list
+        && values.size() == expectedSize
+        && values.toSet().size() == expectedSize
+        && validSpotlightPositionAt(values, 0)
+        && validSpotlightPositionAt(values, 1)
+        && validSpotlightPositionAt(values, 2)
+        && validSpotlightPositionAt(values, 3)
+        && validSpotlightPositionAt(values, 4)
+        && validSpotlightPositionAt(values, 5)
+        && validSpotlightPositionAt(values, 6)
+        && validSpotlightPositionAt(values, 7);
+    }
+
+    function validSpotlightFactPartEntry(data, facts, localIndex, canonicalIndex) {
+      return data.selectedFacts.size() <= localIndex
+        || (data.selectedFacts[localIndex].id == facts.selectedFactIds[canonicalIndex]
+          && data.selectedFacts[localIndex].position == facts.selectedFactPositions[canonicalIndex]);
+    }
+
+    function validSpotlightFactPartList(values, verificationSourceIds) {
+      return values is list && values.size() <= 4
+        && validSpotlightFactAt(values, verificationSourceIds, 0)
+        && validSpotlightFactAt(values, verificationSourceIds, 1)
+        && validSpotlightFactAt(values, verificationSourceIds, 2)
+        && validSpotlightFactAt(values, verificationSourceIds, 3);
+    }
+
+    function validSpotlightFactPartIntegrity(data, documentId) {
+      let factsPath = spotlightFactsIntegrityPath(data.packageId);
+      let facts = get(factsPath).data;
+      let expectedSize = data.part == 1
+        ? (facts.selectedFactCount > 4 ? 4 : facts.selectedFactCount)
+        : (facts.selectedFactCount > 4 ? facts.selectedFactCount - 4 : 0);
+      let offset = data.part == 1 ? 0 : 4;
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'part', 'selectedFacts'
+        ])
+        && data.part in [1, 2]
+        && ((data.part == 1 && documentId == data.packageId + '-1')
+          || (data.part == 2 && documentId == data.packageId + '-2'))
+        && exists(factsPath)
+        && data.workspaceId == facts.workspaceId
+        && data.ownerId == request.auth.uid
+        && data.ownerId == facts.ownerId
+        && validSpotlightFactPartList(data.selectedFacts, facts.verificationSourceIds)
+        && data.selectedFacts.size() == expectedSize
+        && validSpotlightFactPartEntry(data, facts, 0, offset)
+        && validSpotlightFactPartEntry(data, facts, 1, offset + 1)
+        && validSpotlightFactPartEntry(data, facts, 2, offset + 2)
+        && validSpotlightFactPartEntry(data, facts, 3, offset + 3);
+    }
+
+    function validSpotlightContentIntegrity(data, documentId) {
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'workflowDraftId',
+          'workingDraft', 'verticalVideo', 'instagramCaption', 'shotList'
+        ])
+        && data.packageId == documentId
+        && isIdentifier(data.workspaceId)
+        && data.ownerId == request.auth.uid
+        && isIdentifier(data.workflowDraftId)
+        && boundedString(data.workingDraft, 40000) && data.workingDraft.size() > 0
+        && data.verticalVideo is map
+        && data.verticalVideo.keys().size() == 4
+        && boundedString(data.verticalVideo.title, 10000) && data.verticalVideo.title.size() > 0
+        && boundedString(data.verticalVideo.hook, 20000) && data.verticalVideo.hook.size() > 0
+        && boundedString(data.verticalVideo.callToAction, 20000) && data.verticalVideo.callToAction.size() > 0
+        && validSpotlightSceneList(data.verticalVideo.scenes)
+        && boundedString(data.instagramCaption, 10000) && data.instagramCaption.size() > 0
+        && validSpotlightTextList(data.shotList, 4);
+    }
+
+    function validSpotlightDeliveryIntegrity(data, documentId) {
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'workflowDraftId',
+          'excludedFactIds', 'unresolvedWarnings', 'rightsConfirmed',
+          'productionChecklist', 'mediaChecklist', 'graphicsNeeded',
+          'publishingRequirements', 'qaChecklist'
+        ])
+        && data.packageId == documentId
+        && isIdentifier(data.workspaceId)
+        && data.ownerId == request.auth.uid
+        && isIdentifier(data.workflowDraftId)
+        && validSpotlightTextList(data.excludedFactIds, 8)
+        && validSpotlightTextList(data.unresolvedWarnings, 8)
+        && data.rightsConfirmed is bool
+        && validSpotlightChecklists(data);
+    }
+
+    function validSpotlightRequestIntegrity(data, documentId) {
+      let draftPath = /databases/$(database)/documents/internalFounderWorkflowDrafts/$(data.workflowDraftId);
+      let draft = get(draftPath).data;
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'workflowDraftId', 'request'
+        ])
+        && data.packageId == documentId
+        && isIdentifier(data.workspaceId)
+        && data.ownerId == request.auth.uid
+        && isIdentifier(data.workflowDraftId)
+        && validFounderRequest(data.request)
+        && exists(draftPath)
+        && draft.workspaceId == data.workspaceId
+        && draft.ownerId == data.ownerId
+        && draft.status == 'active'
+        && draft.request == data.request;
+    }
+
+    function validSpotlightCustomizationIntegrity(data, documentId) {
+      let draftPath = /databases/$(database)/documents/internalFounderWorkflowDrafts/$(data.workflowDraftId);
+      let draft = get(draftPath).data;
+      return data is map
+        && data.keys().hasOnly([
+          'packageId', 'workspaceId', 'ownerId', 'workflowDraftId', 'customization'
+        ])
+        && data.packageId == documentId
+        && isIdentifier(data.workspaceId)
+        && data.ownerId == request.auth.uid
+        && isIdentifier(data.workflowDraftId)
+        && validFounderCustomization(data.customization)
+        && exists(draftPath)
+        && draft.workspaceId == data.workspaceId
+        && draft.ownerId == data.ownerId
+        && draft.status == 'active'
+        && draft.customization == data.customization;
+    }
+
+    function validSchoolSpotlightPackageIntegrity(data, documentId) {
+      // Each integrity document validates its complete nested schema on write. The
+      // package header only needs a bounded set of cross-document links here. This
+      // keeps the maximum supported eight-fact package below Firestore's expression
+      // ceiling while retaining atomic linkage checks at the package boundary.
+      let facts = getAfter(spotlightFactsIntegrityPath(documentId));
+      let content = getAfter(spotlightContentIntegrityPath(documentId));
+      let delivery = getAfter(spotlightDeliveryIntegrityPath(documentId));
+      let draft = getAfter(/databases/$(database)/documents/internalFounderWorkflowDrafts/$(data.workflowDraftId));
+      return existsAfter(spotlightFactsIntegrityPath(documentId))
+        && existsAfter(spotlightFactPartIntegrityPath(documentId, 1))
+        && existsAfter(spotlightFactPartIntegrityPath(documentId, 2))
+        && existsAfter(spotlightContentIntegrityPath(documentId))
+        && existsAfter(spotlightDeliveryIntegrityPath(documentId))
+        && existsAfter(spotlightRequestIntegrityPath(documentId))
+        && existsAfter(spotlightCustomizationIntegrityPath(documentId))
+        && existsAfter(/databases/$(database)/documents/internalFounderWorkflowDrafts/$(data.workflowDraftId))
+        && data.factsIntegrityId == documentId
+        && data.contentIntegrityId == documentId
+        && data.deliveryIntegrityId == documentId
+        && data.requestIntegrityId == documentId
+        && data.customizationIntegrityId == documentId
+        && facts.data.packageId == documentId
+        && facts.data.workspaceId == data.workspaceId
+        && facts.data.ownerId == data.ownerId
+        && content.data.packageId == documentId
+        && content.data.workspaceId == data.workspaceId
+        && content.data.ownerId == data.ownerId
+        && content.data.workflowDraftId == data.workflowDraftId
+        && delivery.data.packageId == documentId
+        && delivery.data.workspaceId == data.workspaceId
+        && delivery.data.ownerId == data.ownerId
+        && delivery.data.workflowDraftId == data.workflowDraftId
+        && draft.data.id == data.workflowDraftId
+        && draft.data.workspaceId == data.workspaceId
+        && draft.data.ownerId == data.ownerId
+        && draft.data.projectId == data.projectId
+        && draft.data.schoolId == data.schoolId
+        && draft.data.status == 'active'
+        && delivery.data.rightsConfirmed == data.rightsConfirmed;
+    }
+
+    function validSpotlightApprovalIntegrity(data, documentId) {
+      let deliveryPath = spotlightDeliveryIntegrityPath(documentId);
+      let requestPath = spotlightRequestIntegrityPath(documentId);
+      let customizationPath = spotlightCustomizationIntegrityPath(documentId);
+      let delivery = get(deliveryPath).data;
+      let spotlightRequest = get(requestPath).data;
+      let spotlightCustomization = get(customizationPath).data;
+      return exists(deliveryPath)
+        && exists(requestPath) && exists(customizationPath)
+        && delivery.packageId == documentId
+        && delivery.workspaceId == data.workspaceId
+        && delivery.ownerId == data.ownerId
+        && delivery.workflowDraftId == data.workflowDraftId
+        && delivery.rightsConfirmed == true
+        && spotlightRequest.packageId == documentId
+        && spotlightRequest.workspaceId == data.workspaceId
+        && spotlightRequest.ownerId == data.ownerId
+        && spotlightRequest.workflowDraftId == data.workflowDraftId
+        && spotlightCustomization.packageId == documentId
+        && spotlightCustomization.workspaceId == data.workspaceId
+        && spotlightCustomization.ownerId == data.ownerId
+        && spotlightCustomization.workflowDraftId == data.workflowDraftId;
+    }
+
+    function validSchoolSpotlightPackageShape(data, documentId) {
+      return data is map
+        && data.keys().hasOnly([
+          'id', 'projectId', 'artifactType', 'version', 'status',
+          'createdAt', 'updatedAt', 'createdBy', 'workspace',
+          'generatedByService', 'summary', 'metadata', 'workspaceId',
+          'ownerId', 'projectTitle', 'projectType', 'outlinePackageId',
+          'nextRecommendedStep', 'active', 'packageKind', 'workflowDraftId',
+          'schoolId', 'rightsConfirmed', 'changeSummary',
+          'factsIntegrityId', 'contentIntegrityId', 'deliveryIntegrityId',
+          'requestIntegrityId', 'customizationIntegrityId',
+          'supersededAt', 'previousPackageId'
+        ])
+        && data.keys().size() == 29
+          + (data.keys().hasAny(['supersededAt']) ? 1 : 0)
+          + (data.keys().hasAny(['previousPackageId']) ? 1 : 0)
+        && data.id == documentId
+        && data.projectId is string
+        && data.workspaceId is string && data.ownerId is string
+        && data.ownerId == request.auth.uid
+        && data.workflowDraftId is string && data.schoolId is string
+        && data.artifactType == 'production-package'
+        && data.status in ['staged', 'ready']
+        && data.projectType == 'school-spotlight'
+        && data.packageKind == 'school-spotlight'
+        && data.workspace == 'production-studio'
+        && data.generatedByService == 'production'
+        && data.version is int && data.version > 0
+        && data.active is bool
+        && ((data.status == 'staged' && data.active == false)
+          || data.status == 'ready')
+        && ((data.version == 1 && !data.keys().hasAny(['previousPackageId']))
+          || (data.version > 1 && data.previousPackageId is string))
+        && boundedString(data.createdAt, 64) && boundedString(data.updatedAt, 64)
+        && (!data.keys().hasAny(['supersededAt'])
+          || (boundedString(data.supersededAt, 64) && data.supersededAt.size() > 0))
+        && (!data.keys().hasAny(['previousPackageId']) || isIdentifier(data.previousPackageId))
+        && data.createdBy == data.ownerId
+        && boundedString(data.summary, 20000) && data.summary.size() > 0
+        && boundedString(data.projectTitle, 4096) && data.projectTitle.size() > 0
+        && data.outlinePackageId == 'outline_' + data.projectId
+        && boundedString(data.nextRecommendedStep, 10000) && data.nextRecommendedStep.size() > 0
+        && boundedString(data.changeSummary, 10000) && data.changeSummary.size() > 0
+        && data.metadata is map
+        && data.metadata.keys().hasOnly([
+          'workspaceId', 'projectType', 'schoolId', 'workflowDraftId', 'productionComplete'
+        ])
+        && data.metadata.workspaceId == data.workspaceId
+        && data.metadata.projectType == 'school-spotlight'
+        && data.metadata.schoolId == data.schoolId
+        && data.metadata.workflowDraftId == data.workflowDraftId
+        && data.metadata.productionComplete == true
+        && data.rightsConfirmed is bool
+        && validSchoolSpotlightPackageIntegrity(data, documentId);
+    }
+
+    function validFounderDraftRequestBoundary(data) {
+      return data is map
+        && data.goals is list
+        && data.audiences is list
+        && data.platforms is list
+        && data.media is list
+        && data.availableMedia is list
+        && data.needShotList is bool
+        && data.objective is string
+        && data.audience is string
+        && data.centralEmphasis is string
+        && data.callToAction is string
+        && (!('no-media-yet' in data.media) || data.media.size() == 1);
+    }
+
+    function validFounderDraftCustomizationBoundary(data) {
+      return data is map
+        && data.hook is string
+        && data.emphasis is string
+        && data.callToAction is string
+        && data.mediaAvailability is list
+        && data.verticalVideoScript is string
+        && data.instagramCaption is string
+        && data.shotList is list
+        && data.rightsConfirmed is bool;
+    }
+
+    function validSchoolSpotlightPackageLinkage(data, documentId) {
+      let projectPath = /databases/$(database)/documents/internalProjects/$(data.projectId);
+      let draftPath = /databases/$(database)/documents/internalFounderWorkflowDrafts/$(data.workflowDraftId);
+      let project = getAfter(projectPath).data;
+      let draft = getAfter(draftPath).data;
+      return validSchoolSpotlightPackageShape(data, documentId)
+        && project.workspaceId == data.workspaceId
+        && project.ownerId == data.ownerId
+        && project.get('projectType', '') == 'school-spotlight'
+        && project.get('state', '') == 'production'
+        && project.get('status', '') == 'production'
+        && project.knowledgeEntityIds is list
+        && project.knowledgeEntityIds.hasAny([data.schoolId])
+        && (!project.keys().hasAny(['creationRequestId'])
+          || project.creationRequestId == data.workflowDraftId
+          || project.creationRequestId == 'founder-simple-' + data.workflowDraftId)
+        && draft.workspaceId == data.workspaceId
+        && draft.ownerId == data.ownerId
+        && draft.schoolId == data.schoolId
+        && draft.projectId == data.projectId
+        && draft.kind == 'school-spotlight'
+        && draft.status == 'active';
+    }
+
+    function validPreviousSpotlightPackage(data) {
+      let previousPackageId = data.get('previousPackageId', 'no-previous-package');
+      let previousPath = /databases/$(database)/documents/internalProductionPackages/$(previousPackageId);
+      return data.version == 1
+        || (existsAfter(previousPath)
+          && getAfter(previousPath).data.packageKind == 'school-spotlight'
+          && getAfter(previousPath).data.projectId == data.projectId
+          && getAfter(previousPath).data.workspaceId == data.workspaceId
+          && getAfter(previousPath).data.ownerId == data.ownerId
+          && getAfter(previousPath).data.workflowDraftId == data.workflowDraftId
+          && getAfter(previousPath).data.schoolId == data.schoolId
+          && getAfter(previousPath).data.version == data.version - 1
+          && getAfter(previousPath).data.status == 'ready'
+          && getAfter(previousPath).data.active == true);
+    }
+
+    function schoolSpotlightPackageIdentityPreserved(data, documentId) {
+      return resource.data.packageKind == 'school-spotlight'
+        && data.ownerId == request.auth.uid
+        && data.id == documentId
+        && data.id == resource.data.id
+        && data.projectId == resource.data.projectId
+        && data.workspaceId == resource.data.workspaceId
+        && data.ownerId == resource.data.ownerId
+        && data.workflowDraftId == resource.data.workflowDraftId
+        && data.schoolId == resource.data.schoolId
+        && data.version == resource.data.version
+        && data.createdAt == resource.data.createdAt;
+    }
+
+    function spotlightPackageMayBeSuperseded(data, documentId) {
+      let projectPath = /databases/$(database)/documents/internalProjects/$(resource.data.projectId);
+      return schoolSpotlightPackageIdentityPreserved(data, documentId)
+        && resource.data.active == true
+        && data.active == false
+        && data.supersededAt is string
+        && data.supersededAt.size() > 0
+        && data.diff(resource.data).affectedKeys().hasOnly([
+          'active', 'supersededAt', 'updatedAt'
+        ])
+        && (!existsAfter(projectPath)
+          || getAfter(projectPath).data.get('approvedSchoolSpotlightPackageId', '') != documentId);
+    }
+
+    function spotlightPackageMayBeRestaged(data, documentId) {
+      return schoolSpotlightPackageIdentityPreserved(data, documentId)
+        && resource.data.status == 'staged'
+        && resource.data.active == false
+        && data.status == 'staged'
+        && data.active == false
+        && validSchoolSpotlightPackageLinkage(data, documentId)
+        && validPreviousSpotlightPackage(data);
+    }
+
+    function spotlightPackageMayBeActivated(data, documentId) {
+      let projectPath = /databases/$(database)/documents/internalProjects/$(resource.data.projectId);
+      let previousPackageId = resource.data.get('previousPackageId', 'no-previous-package');
+      let previousPath = /databases/$(database)/documents/internalProductionPackages/$(previousPackageId);
+      return schoolSpotlightPackageIdentityPreserved(data, documentId)
+        && resource.data.status == 'staged'
+        && resource.data.active == false
+        && data.status == 'ready'
+        && data.active == true
+        && data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'active', 'updatedAt'
+        ])
+        && existsAfter(projectPath)
+        && getAfter(projectPath).data.ownerId == request.auth.uid
+        && getAfter(projectPath).data.workspaceId == data.workspaceId
+        && getAfter(projectPath).data.get('state', '') == 'production'
+        && getAfter(projectPath).data.get('status', '') == 'production'
+        && getAfter(projectPath).data.activeSchoolSpotlightPackageId == documentId
+        && getAfter(projectPath).data.activeProductionVersion == data.version
+        && (data.version == 1
+          || (existsAfter(previousPath)
+            && getAfter(previousPath).data.projectId == data.projectId
+            && getAfter(previousPath).data.workspaceId == data.workspaceId
+            && getAfter(previousPath).data.ownerId == data.ownerId
+            && getAfter(previousPath).data.workflowDraftId == data.workflowDraftId
+            && getAfter(previousPath).data.schoolId == data.schoolId
+            && getAfter(previousPath).data.version == data.version - 1
+            && getAfter(previousPath).data.status == 'ready'
+            && getAfter(previousPath).data.active == false));
+    }
+
+    function spotlightIntegrityMayBeWritten(packageId, ownerId, workspaceId) {
+      let packagePath = /databases/$(database)/documents/internalProductionPackages/$(packageId);
+      return !exists(packagePath)
+        || (get(packagePath).data.packageKind == 'school-spotlight'
+          && get(packagePath).data.status == 'staged'
+          && get(packagePath).data.active == false
+          && get(packagePath).data.ownerId == ownerId
+          && get(packagePath).data.workspaceId == workspaceId);
+    }
+
+    function spotlightApprovalFieldsChanged(data) {
+      return data.diff(resource.data).affectedKeys().hasAny([
+        'approvedSchoolSpotlightPackageId',
+        'approvedSchoolSpotlightPackageVersion'
+      ]);
+    }
+
+    function founderSimpleProject(data) {
+      return data.keys().hasAny([
+          'activeSchoolSpotlightPackageId',
+          'approvedSchoolSpotlightPackageId',
+          'approvedSchoolSpotlightPackageVersion'
+        ])
+        || data.get('creationRequestId', '').matches('founder-simple-.+');
+    }
+
+    function schoolSpotlightProject(data) {
+      return data.get('projectType', '') == 'school-spotlight'
+        || data.get('type', '') == 'school-spotlight';
+    }
+
+    function projectEntersApproved(data) {
+      return (data.get('state', '') == 'approved' || data.get('status', '') == 'approved')
+        && (resource.data.get('state', '') != 'approved'
+          || resource.data.get('status', '') != 'approved');
+    }
+
+    function approvedSpotlightPackageMatches(data, documentId) {
+      let approvedPackageId = data.get('approvedSchoolSpotlightPackageId', '');
+      let approvedPackageVersion = data.get('approvedSchoolSpotlightPackageVersion', 0);
+      let packagePath = /databases/$(database)/documents/internalProductionPackages/$(approvedPackageId);
+      let spotlightPackage = getAfter(packagePath).data;
+      let draftPath = /databases/$(database)/documents/internalFounderWorkflowDrafts/$(spotlightPackage.workflowDraftId);
+      let draft = getAfter(draftPath).data;
+      return data.id == documentId
+        && data.state == 'approved' && data.status == 'approved'
+        && resource.data.get('state', '') == 'review'
+        && resource.data.get('status', '') == 'review'
+        && data.ownerId == request.auth.uid
+        && isIdentifier(approvedPackageId)
+        && approvedPackageVersion is int
+        && approvedPackageVersion > 0
+        && approvedPackageId == data.activeSchoolSpotlightPackageId
+        && approvedPackageVersion == data.activeProductionVersion
+        && existsAfter(packagePath)
+        && spotlightPackage.id == approvedPackageId
+        && spotlightPackage.packageKind == 'school-spotlight'
+        && spotlightPackage.artifactType == 'production-package'
+        && spotlightPackage.status == 'ready'
+        && spotlightPackage.projectId == documentId
+        && spotlightPackage.workspaceId == data.workspaceId
+        && spotlightPackage.ownerId == data.ownerId
+        && spotlightPackage.version == approvedPackageVersion
+        && spotlightPackage.active == true
+        && spotlightPackage.rightsConfirmed == true
+        && spotlightPackage.factsIntegrityId == approvedPackageId
+        && spotlightPackage.contentIntegrityId == approvedPackageId
+        && spotlightPackage.deliveryIntegrityId == approvedPackageId
+        && spotlightPackage.requestIntegrityId == approvedPackageId
+        && spotlightPackage.customizationIntegrityId == approvedPackageId
+        && validSpotlightApprovalIntegrity(spotlightPackage, approvedPackageId)
+        && data.get('projectType', '') == 'school-spotlight'
+        && data.knowledgeEntityIds is list
+        && data.knowledgeEntityIds.hasAny([spotlightPackage.schoolId])
+        && (!data.keys().hasAny(['creationRequestId'])
+          || data.creationRequestId == spotlightPackage.workflowDraftId
+          || data.creationRequestId == 'founder-simple-' + spotlightPackage.workflowDraftId)
+        && existsAfter(draftPath)
+        && draft.id == spotlightPackage.workflowDraftId
+        && draft.workspaceId == data.workspaceId
+        && draft.ownerId == data.ownerId
+        && draft.schoolId == spotlightPackage.schoolId
+        && draft.projectId == documentId
+        && draft.currentPackageId == approvedPackageId
+        && draft.currentPackageVersion == approvedPackageVersion
+        && draft.step == 'approve'
+        && draft.status == 'active'
+        && spotlightRequestMatches(
+          draft.request,
+          get(spotlightRequestIntegrityPath(approvedPackageId)).data.request
+        )
+        && spotlightCustomizationMatches(
+          draft.customization,
+          get(spotlightCustomizationIntegrityPath(approvedPackageId)).data.customization
+        )
+        && existsAfter(/databases/$(database)/documents/internalKnowledgeNodes/$(spotlightPackage.schoolId))
+        && getAfter(/databases/$(database)/documents/internalKnowledgeNodes/$(spotlightPackage.schoolId)).data.id == spotlightPackage.schoolId
+        && getAfter(/databases/$(database)/documents/internalKnowledgeNodes/$(spotlightPackage.schoolId)).data.workspaceId == data.workspaceId
+        && getAfter(/databases/$(database)/documents/internalKnowledgeNodes/$(spotlightPackage.schoolId)).data.type == 'school'
+        && getAfter(/databases/$(database)/documents/internalKnowledgeNodes/$(spotlightPackage.schoolId)).data.status == 'active';
+    }
+
+    function validSpotlightProjectCreate(data) {
+      return !founderSimpleProject(data)
+        || (data.ownerId == request.auth.uid
+          && data.get('state', '') != 'approved'
+          && data.get('status', '') != 'approved');
+    }
+
+    function validSpotlightProjectUpdate(data, documentId) {
+      let entersApproved = projectEntersApproved(data);
+      let exactApprovalRequired = schoolSpotlightProject(resource.data)
+        || schoolSpotlightProject(data)
+        || founderSimpleProject(resource.data)
+        || founderSimpleProject(data);
+      return (!exactApprovalRequired && !spotlightApprovalFieldsChanged(data))
+        || (exactApprovalRequired
+          && resource.data.ownerId == request.auth.uid
+          && data.ownerId == request.auth.uid
+          && !entersApproved
+          && !spotlightApprovalFieldsChanged(data))
+        || (exactApprovalRequired
+          && resource.data.ownerId == request.auth.uid
+          && data.ownerId == request.auth.uid
+          && entersApproved
+          && spotlightApprovalFieldsChanged(data)
+          && approvedSpotlightPackageMatches(data, documentId));
+    }
+
+    match /internalProductionPackages/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && (!isSchoolSpotlightPackage(request.resource.data)
+          || (request.resource.data.status == 'staged'
+            && request.resource.data.active == false
+            && validSchoolSpotlightPackageLinkage(request.resource.data, documentId)
+            && validPreviousSpotlightPackage(request.resource.data)));
+      allow update: if isAdmin()
+        && ((!isSchoolSpotlightPackage(resource.data)
+            && !isSchoolSpotlightPackage(request.resource.data))
+          || spotlightPackageMayBeSuperseded(request.resource.data, documentId)
+          || spotlightPackageMayBeRestaged(request.resource.data, documentId)
+          || spotlightPackageMayBeActivated(request.resource.data, documentId));
+      allow delete: if isAdmin() && !isSchoolSpotlightPackage(resource.data);
+    }
+
+    match /internalSchoolSpotlightPackageFacts/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && validSpotlightFactsIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightFactsIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageFactsA/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          request.resource.data.packageId,
+          request.resource.data.ownerId,
+          request.resource.data.workspaceId)
+        && validSpotlightFactPartIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          request.resource.data.packageId,
+          request.resource.data.ownerId,
+          request.resource.data.workspaceId)
+        && request.resource.data.packageId == resource.data.packageId
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightFactPartIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageFactsB/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          request.resource.data.packageId,
+          request.resource.data.ownerId,
+          request.resource.data.workspaceId)
+        && validSpotlightFactPartIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          request.resource.data.packageId,
+          request.resource.data.ownerId,
+          request.resource.data.workspaceId)
+        && request.resource.data.packageId == resource.data.packageId
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightFactPartIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageContent/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && validSpotlightContentIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightContentIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageDelivery/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && validSpotlightDeliveryIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightDeliveryIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageRequest/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && validSpotlightRequestIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightRequestIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalSchoolSpotlightPackageCustomization/{documentId} {
+      allow read: if isAdmin() && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && validSpotlightCustomizationIntegrity(request.resource.data, documentId);
+      allow update: if isAdmin()
+        && spotlightIntegrityMayBeWritten(
+          documentId, request.resource.data.ownerId, request.resource.data.workspaceId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && validSpotlightCustomizationIntegrity(request.resource.data, documentId);
+      allow delete: if false;
+    }
+
+    match /internalProjects/{documentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validSpotlightProjectCreate(request.resource.data);
+      allow update: if isAdmin()
+        && validSpotlightProjectUpdate(request.resource.data, documentId);
+      allow delete: if isAdmin();
+    }
+
+    function validFounderWorkflowDraftShape(data, documentId) {
+      return data.keys().size() == 14
+          + (data.keys().hasAny(['schoolDraft']) ? 1 : 0)
+          + (data.keys().hasAny(['schoolId']) ? 1 : 0)
+          + (data.keys().hasAny(['projectId']) ? 1 : 0)
+          + (data.keys().hasAny(['currentPackageId']) ? 1 : 0)
+          + (data.keys().hasAny(['currentPackageVersion']) ? 1 : 0)
+        && data.id == documentId && isIdentifier(data.id)
+        && isIdentifier(data.workspaceId) && isIdentifier(data.ownerId)
+        && data.kind == 'school-spotlight'
+        && data.step in ['request', 'review', 'customize', 'approve']
+        && data.status in ['active', 'completed', 'archived']
+        && (!data.keys().hasAny(['schoolDraft']) || validFounderSchoolDraft(data.schoolDraft))
+        && optionalIdentifier(data, 'schoolId')
+        && optionalIdentifier(data, 'projectId')
+        && optionalIdentifier(data, 'currentPackageId')
+        && (!data.keys().hasAny(['currentPackageVersion'])
+          || (data.currentPackageVersion is int && data.currentPackageVersion > 0))
+        && data.request is map
+        && data.facts is list && data.facts.size() <= 32
+        && data.customization is map
+        && data.createdAt is timestamp && data.updatedAt is timestamp
+        && isIdentifier(data.createdBy) && isIdentifier(data.updatedBy)
+        && data.revision is int && data.revision > 0;
+    }
+
+    function validFounderWorkflowDraft(data, documentId) {
+      return validFounderWorkflowDraftShape(data, documentId)
+        && data.step == 'request'
+        && data.status == 'active'
+        && data.facts.size() == 0;
+    }
+
+    function validFounderWorkflowDraftUpdate(data, previous) {
+      let changed = data.diff(previous).affectedKeys();
+      let validateRequest = changed.hasAny(['request']);
+      let validateCustomization = changed.hasAny(['customization']);
+      return changed.hasOnly([
+          'step', 'status', 'schoolDraft', 'schoolId', 'projectId', 'request',
+          'facts', 'customization', 'currentPackageId', 'currentPackageVersion',
+          'updatedAt', 'updatedBy', 'revision'
+        ])
+        && (!changed.hasAny(['step'])
+          || data.step in ['request', 'review', 'customize', 'approve'])
+        && (!changed.hasAny(['status'])
+          || data.status in ['active', 'completed', 'archived'])
+        && (!changed.hasAny(['schoolDraft'])
+          || !data.keys().hasAny(['schoolDraft'])
+          || validFounderSchoolDraft(data.schoolDraft))
+        && (!changed.hasAny(['schoolId'])
+          || !data.keys().hasAny(['schoolId'])
+          || isIdentifier(data.schoolId))
+        && (!changed.hasAny(['projectId'])
+          || !data.keys().hasAny(['projectId'])
+          || isIdentifier(data.projectId))
+        && (!changed.hasAny(['currentPackageId'])
+          || !data.keys().hasAny(['currentPackageId'])
+          || isIdentifier(data.currentPackageId))
+        && (!changed.hasAny(['currentPackageVersion'])
+          || !data.keys().hasAny(['currentPackageVersion'])
+          || (data.currentPackageVersion is int && data.currentPackageVersion > 0))
+        && (!changed.hasAny(['facts'])
+          || (data.facts is list && data.facts.size() <= 32))
+        && (!validateRequest || validFounderDraftRequestBoundary(data.request))
+        && (!validateCustomization || validFounderDraftCustomizationBoundary(data.customization))
+        && data.updatedAt is timestamp
+        && isIdentifier(data.updatedBy)
+        && data.revision is int && data.revision > 0;
+    }
+
+    match /internalFounderWorkflowDrafts/{documentId} {
+      // Workflow drafts are private, incomplete Founder work. Existing
+      // documents are readable only by their authenticated owner for both
+      // direct reads and queries. A missing-document get is allowed only so
+      // the client can atomically attempt a first create; it reveals no data
+      // and does not relax the owner check for any existing document.
+      allow get: if isAdmin()
+        && (!exists(/databases/$(database)/documents/internalFounderWorkflowDrafts/$(documentId))
+          || resource.data.ownerId == request.auth.uid);
+      allow list: if isAdmin()
+        && resource.data.ownerId == request.auth.uid;
+      allow create: if isAdmin()
+        && validFounderWorkflowDraft(request.resource.data, documentId)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.revision == 1;
+      allow update: if isAdmin()
+        && validFounderWorkflowDraftUpdate(request.resource.data, resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if false;
+    }
+
     match /{collectionName}/{documentId} {
-      allow read: if (!isInternalKnowledgeCollection(collectionName) && publishedRead()) || isAdmin();
-      allow create, update, delete: if !isInternalKnowledgeCollection(collectionName) && isAdmin();
+      allow read: if !isRestrictedInternalCollection(collectionName)
+        && (publishedRead() || isAdmin());
+      allow create, update, delete: if !isRestrictedInternalCollection(collectionName) && isAdmin();
     }
   }
 }

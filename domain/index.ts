@@ -5,6 +5,7 @@ export * from "./conversation";
 export * from "./decision";
 export * from "./event";
 export * from "./execution";
+export * from "./founder-simple";
 export * from "./intent";
 export * from "./knowledge";
 export * from "./organization";

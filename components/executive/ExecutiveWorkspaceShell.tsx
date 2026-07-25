@@ -38,6 +38,9 @@ import { OpportunitiesRecommendations } from "@/components/executive/Opportuniti
 import { KnowledgeExplorer } from "@/components/executive/KnowledgeExplorer";
 import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
 import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
+import { FounderReviewQueue } from "@/components/founder/FounderReviewQueue";
+import { FounderIntelligence } from "@/components/founder/FounderIntelligence";
+import { FounderSimpleCreate } from "@/components/founder/FounderSimpleCreate";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import {
@@ -53,6 +56,8 @@ import {
   Map as MapIcon,
   Mic,
   Network,
+  PlusCircle,
+  ClipboardCheck,
   Send,
 } from "lucide-react";
 import Link from "next/link";
@@ -61,12 +66,14 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 export type ExecutiveSpaceId =
   | "executive-office"
+  | "create"
   | "projects"
   | "intelligence-center"
   | "knowledge-center"
   | "production-studio"
   | "strategy-room"
   | "product-lab"
+  | "review-approve"
   | "library";
 
 type WorkspaceStatus = "checking" | "checking-role" | "authenticated" | "signed-out" | "unconfigured" | "denied";
@@ -264,33 +271,53 @@ function createWorkspaceHistoryEntry(workspace: ProjectWorkspace, reason: string
 export const executiveSpaces: ExecutiveSpace[] = [
   {
     id: "executive-office",
-    label: "Executive Office",
-    href: "/executive-workspace/executive-office",
-    eyebrow: "Command",
-    title: "Executive Office",
-    description: "A quiet operating view for company priorities, leadership focus, and open foundation work.",
+    label: "Today",
+    href: "/executive-workspace/today",
+    eyebrow: "Headquarters",
+    title: "Today",
+    description: "See priorities, open decisions, and the best next action for Hoop Frens.",
     icon: Building2,
     panels: ["Today", "Priorities", "Open loops"],
   },
   {
+    id: "create",
+    label: "Create",
+    href: "/executive-workspace/create",
+    eyebrow: "Founder Actions",
+    title: "Create",
+    description: "Start a guided School or content request in plain business language.",
+    icon: PlusCircle,
+    panels: ["Add School", "School Spotlight"],
+  },
+  {
     id: "projects",
-    label: "Projects",
+    label: "Work",
     href: "/executive-workspace/projects",
     eyebrow: "Portfolio",
-    title: "Projects",
+    title: "Work",
     description: "A cross-workspace view of active Hoop Frens projects, priorities, and next actions.",
     icon: FolderKanban,
     panels: ["Projects", "Priorities", "Activity"],
   },
   {
     id: "intelligence-center",
-    label: "Intelligence Center",
+    label: "Intelligence",
     href: "/executive-workspace/intelligence-center",
     eyebrow: "Research",
-    title: "Intelligence Center",
-    description: "Placeholder surface for basketball knowledge, source review, and signal gathering.",
+    title: "Intelligence",
+    description: "Review trusted School and basketball information, sources, and items needing attention.",
     icon: MapIcon,
     panels: ["Signals", "Sources", "Watchlist"],
+  },
+  {
+    id: "review-approve",
+    label: "Review & Approve",
+    href: "/executive-workspace/review",
+    eyebrow: "Founder Review",
+    title: "Review & Approve",
+    description: "Review exact content versions, request changes, or approve the current package.",
+    icon: ClipboardCheck,
+    panels: ["Waiting for Review", "Approved"],
   },
   {
     id: "knowledge-center",
@@ -342,6 +369,22 @@ export const executiveSpaces: ExecutiveSpace[] = [
     icon: BookOpen,
     panels: ["References", "Docs", "Saved context"],
   },
+];
+
+const primaryExecutiveSpaceIds: ExecutiveSpaceId[] = [
+  "executive-office",
+  "create",
+  "projects",
+  "intelligence-center",
+  "review-approve",
+  "library",
+];
+
+const advancedExecutiveSpaceIds: ExecutiveSpaceId[] = [
+  "knowledge-center",
+  "production-studio",
+  "strategy-room",
+  "product-lab",
 ];
 
 export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: ExecutiveSpaceId }) {
@@ -431,7 +474,7 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
               Sign in with an approved Hoop Frens admin account to view the Executive Workspace shell.
             </p>
             <div className="mt-5 border border-white/10 bg-white/[0.03] p-4 text-sm font-bold leading-6 text-zinc-300">
-              Firebase authentication is required before workspace access is evaluated.
+              Authentication is required before Headquarters access is evaluated.
             </div>
             <Link
               href="/admin/login"
@@ -455,8 +498,8 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
             </p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Executive Workspace</p>
           </div>
-          <nav className="flex gap-1 overflow-x-auto p-2 lg:grid lg:overflow-visible lg:p-3" aria-label="Executive workspace navigation">
-            {executiveSpaces.map((space) => {
+          <nav className="flex gap-1 overflow-x-auto p-2 lg:grid lg:overflow-visible lg:p-3" aria-label="Headquarters navigation">
+            {executiveSpaces.filter((space) => primaryExecutiveSpaceIds.includes(space.id)).map((space) => {
               const Icon = space.icon;
               const active = space.id === activeSpace.id;
               return (
@@ -472,6 +515,22 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
                 </Link>
               );
             })}
+            <details className="group shrink-0 lg:mt-2" open={advancedExecutiveSpaceIds.includes(activeSpace.id) || undefined}>
+              <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-xs font-black uppercase text-zinc-500 transition hover:bg-white/5 hover:text-white lg:h-11 lg:text-sm">
+                <Network aria-hidden="true" size={17} /> Advanced
+              </summary>
+              <div className="mt-1 flex gap-1 border-white/10 lg:grid lg:border-l lg:pl-2">
+                {executiveSpaces.filter((space) => advancedExecutiveSpaceIds.includes(space.id)).map((space) => {
+                  const Icon = space.icon;
+                  const active = space.id === activeSpace.id;
+                  return (
+                    <Link key={space.id} href={space.href} className={`flex h-10 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-black uppercase transition ${active ? "bg-red-600 text-white" : "text-zinc-500 hover:bg-white/5 hover:text-white"}`}>
+                      <Icon size={16} /> {space.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </details>
           </nav>
           <div className="mt-auto hidden border-t border-white/10 p-4 lg:block">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Signed in</p>
@@ -494,8 +553,14 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
           <main className="min-h-0 flex-1 overflow-auto">
             {activeSpace.id === "executive-office" ? (
               <ExecutiveOfficeContent currentUserId={user?.uid || "founder"} />
+            ) : activeSpace.id === "create" ? (
+              <FounderSimpleCreate currentUserId={user?.uid || "founder"} />
             ) : activeSpace.id === "projects" ? (
               <ProjectsWorkspace currentUserId={user?.uid || "founder"} currentUserLabel={userLabel} />
+            ) : activeSpace.id === "intelligence-center" ? (
+              <FounderIntelligence />
+            ) : activeSpace.id === "review-approve" ? (
+              <FounderReviewQueue currentUserId={user?.uid || "founder"} />
             ) : activeSpace.id === "knowledge-center" ? (
               <KnowledgeExplorer currentUserId={user?.uid || "founder"} />
             ) : (
@@ -1110,6 +1175,15 @@ function ExecutiveOfficeContent({ currentUserId }: { currentUserId: string }) {
           </div>
         </section>
 
+        <section className="grid gap-3 sm:grid-cols-2" aria-label="Quick actions">
+          <Link href="/executive-workspace/create" className="flex min-h-14 items-center justify-between border border-red-500/40 bg-red-600 px-4 py-3 text-sm font-black uppercase text-white transition hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            Request School Spotlight <PlusCircle aria-hidden="true" size={18} />
+          </Link>
+          <Link href="/executive-workspace/create" className="flex min-h-14 items-center justify-between border border-white/10 bg-black px-4 py-3 text-sm font-black uppercase text-white transition hover:border-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            Add School <Building2 aria-hidden="true" className="text-red-400" size={18} />
+          </Link>
+        </section>
+
         <FounderDailyBrief
           brief={dailyBrief}
           loading={projectsLoading || timelineLoading || visitLoading}
@@ -1588,7 +1662,7 @@ function WorkspacePlaceholder({ activeSpace }: { activeSpace: ExecutiveSpace }) 
             </div>
             <div className="mt-6 h-px bg-white/10" />
             <p className="mt-5 text-sm leading-6 text-zinc-500">
-              Placeholder only. Production workflows, Firestore data, and AI output will be added in later approved slices.
+              This workspace is reserved for a later approved capability. No actions are available here yet.
             </p>
           </div>
         ))}
