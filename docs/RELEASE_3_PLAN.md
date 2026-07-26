@@ -2,17 +2,19 @@
 
 ## Release Name
 
-**Executive Reasoning**
+**Deterministic Knowledge and Founder-Simple Operations**
 
 ## Mission
 
-Establish deterministic, source-aware knowledge before adding governed AI reasoning to Headquarters, without weakening the workflow, authorization model, Founder control, or auditability established in Release 2.
+Establish deterministic, source-aware knowledge and turn it into practical Founder workflows before adding governed AI reasoning to Headquarters, without weakening the workflow, authorization model, Founder control, or auditability established in Release 2.
 
 ## Current Scope and Status
 
-EO-046 through EO-049 implement Release 3.1 Capability 1, the deterministic Knowledge Graph foundation. That capability is released, EO-046 through EO-049 are complete, and Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. It contains no AI, model-provider integration, automated ingestion, external API, external-search behavior, or EO-050 implementation.
+EO-046 through EO-049 implement Release 3.1 Capability 1, the deterministic Knowledge Graph foundation. That capability is released, EO-046 through EO-049 are complete, and Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. It contains no AI, model-provider integration, automated ingestion, external API, or external-search behavior.
 
-Future AI and Chief Intelligence Officer capabilities have not started. The pending decisions in [`RELEASE_3_1_DECISION_PACKAGE.md`](./RELEASE_3_1_DECISION_PACKAGE.md) govern only that future AI/CIO work; they do not block or retroactively gate the deterministic Knowledge Graph delivered by EO-046 through EO-049. Every future AI/CIO capability still requires approved governance decisions, its own Engineering Order, capability-specific review, and the four-gate release process.
+Release 3.2 EO-050 through EO-054 implement the deterministic Founder-Simple Headquarters experience. Engineering is complete with all P1 remediation applied. Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, passed, and final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; required pull-request checks and the merge remain pending. These orders place guided business workflows above the released Knowledge Graph without changing its canonical architecture, and they contain no AI, model-provider integration, external API, external search, autonomous behavior, automated publishing, or public-site change.
+
+Future AI and Chief Intelligence Officer capabilities belong to Release 4 and have not started. The pending decisions in [`RELEASE_3_1_DECISION_PACKAGE.md`](./RELEASE_3_1_DECISION_PACKAGE.md) govern only that future AI/CIO work; they do not block or retroactively gate Release 3.1 or deterministic Release 3.2 work. Every future AI/CIO capability still requires approved governance decisions, its own Engineering Order, capability-specific review, and the four-gate release process.
 
 ## Architecture Principles
 
@@ -24,9 +26,41 @@ Future AI and Chief Intelligence Officer capabilities have not started. The pend
 - AI cannot approve, publish, weaken access controls, or bypass Founder confirmation.
 - New trust boundaries require threat modeling before implementation.
 
-## Proposed Future AI/CIO Capability Sequence
+## Release 3.2 — Founder-Simple Headquarters
 
-### Future AI/CIO Foundation and Governance
+### Permanent Principle
+
+The Founder should never be required to understand nodes, relationships, repositories, schemas, canonical records, or internal IDs to accomplish routine Hoop Frens work. Headquarters must translate business intent into system actions and expose technical concepts only when explicitly requested.
+
+The primary experience is `Request -> Review -> Customize -> Approve`. This experience does not replace the canonical lifecycle, authorization, provenance, history, or approval boundaries.
+
+### Engineering Orders
+
+| Engineering Order | Capability | Scope | Status |
+| --- | --- | --- | --- |
+| EO-050 | Founder-Simple Foundation | Exact primary navigation (`Today`, `Create`, `Work`, `Intelligence`, `Review & Approve`, `Library`), action catalog, guided-flow shell, terminology, progressive disclosure, and durable workflow-draft boundary | Ready to commit; Founder Validation and Independent Review passed |
+| EO-051 | Guided Add School | Source-backed School intake with derived canonical values and no exposed internal IDs | Ready to commit; Founder Validation and Independent Review passed |
+| EO-052 | School Spotlight Request and Verified Information Review | Structured goals, audiences, platform uses, emphasis, media availability, canonical School selection, source-backed fact resolution, and include/correct/exclude review | Ready to commit; Founder Validation and Independent Review passed |
+| EO-053 | Deterministic School Spotlight Package | One reusable vertical-video package, one Instagram caption, one photo/video shot list, one source and verification package, versioning, and unresolved-information handling | Ready to commit; Founder Validation and Independent Review passed |
+| EO-054 | Founder Customization and Approval | Tone, length, hook, emphasis, branding, media and CTA customization, revision, readiness explanations, and explicit existing-lifecycle approval | Ready to commit; Founder Validation and Independent Review passed |
+
+EO-050 through EO-054 are the completed engineering batch for one Founder-visible journey without AI or external APIs. Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Final Independent Review passed with zero P0 and zero P1 findings. Founder authorization is granted; required pull-request checks and the merge remain pending.
+
+The School Spotlight request captures multi-select goals and audiences, Instagram Reel/TikTok/YouTube Short use of one shared vertical-video plan, one primary emphasis with an optional specific angle, structured media availability with optional descriptions, shot-list preference, and CTA. Legacy freeform objective, audience, emphasis, and comma-separated media values remain readable; recognized wording maps into the structured controls and unmatched Founder wording is preserved. These selections describe intent and available media only. They do not upload files, publish, schedule, call a platform, or change the four approved EO-053 outputs.
+
+### Persistence Boundary
+
+Release 3.2 implements an owner-restricted `FounderWorkflowDraft` in `internalFounderWorkflowDrafts` for refresh-safe incomplete guided-flow state. Draft autosave never creates partial canonical Knowledge, Source, project, or package records. The deterministic, versioned `SchoolSpotlightPackage` extends `ProductionPackage`, uses the existing `internalProductionPackages` collection and repository, and validates nested package integrity in protected `internalSchoolSpotlightPackage*` records before atomic activation. It is neither a Review Package nor a Publishing Package and cannot publish, schedule, upload, send, or modify the public website. [ADR-006](./architecture-decisions/ADR-006-founder-workflow-drafts-and-spotlight-packages.md) records the implemented architecture.
+
+### Future Deterministic Product Directions
+
+Facility Tour, Coach Feature, Player Feature, Compare Schools, Recruiting Guide, Social Campaign, New Intelligence review, an expanded cross-capability approval queue beyond the implemented School Spotlight queue, and an expanded Founder-Simple Executive Brief remain future product directions outside EO-050 through EO-054. They require separately approved Engineering Orders.
+
+EO-055 has not started and is not authorized by Release 3.2 Capability 1.
+
+## Release 4 — Proposed Future AI/CIO Capability Sequence
+
+### Release 4.1 — Future AI/CIO Foundation and Governance
 
 **Purpose**
 
@@ -92,7 +126,7 @@ The server-side gateway is the only provider boundary. It must authenticate the 
 - Independent review must include the gateway trust boundary, secrets, data egress, retention, cost enforcement, auditability, and failure behavior.
 - The future Executive Reasoning capability cannot begin implementation until the AI/CIO governance foundation is released and its controls are verified in the deployed environment.
 
-### Release 3.2 — Executive Reasoning
+### Release 4.2 — Executive Reasoning
 
 **Purpose**
 
@@ -148,7 +182,7 @@ The future AI/CIO gateway receives only authorized, minimal project context. The
 - Complete the four gates independently from the AI/CIO governance foundation.
 - Independent review must verify grounding, no-mutation behavior, prompt-injection resistance, and deterministic fallback.
 
-### Release 3.3 — AI Research Analyst
+### Release 4.3 — AI Research Analyst
 
 **Purpose**
 
@@ -203,7 +237,7 @@ External retrieval occurs through a server-side, allowlisted research boundary s
 - Complete all four gates.
 - Independent review must cover retrieval security, source provenance, citation integrity, unsupported-claim handling, project scoping, and approval-before-persistence.
 
-### Release 3.4 — AI Editorial Team
+### Release 4.4 — AI Editorial Team
 
 **Purpose**
 
@@ -259,7 +293,7 @@ Each editorial role is a separate capability contract behind the future AI/CIO g
 - Complete all four gates.
 - Independent review must verify role separation, artifact versioning, project ownership, approval boundaries, and absence of autonomous publishing.
 
-### Release 3.5 — Executive Voice
+### Release 4.5 — Executive Voice
 
 **Purpose**
 
@@ -318,4 +352,4 @@ Voice is an interface to approved tools, not an authorization mechanism. The ser
 
 ## Sequence Governance
 
-Each future AI/CIO capability requires its own approved Engineering Order and bounded branch. A later capability may depend on a released earlier capability, but planning approval does not authorize implementation. Executive Voice remains deferred until the AI/CIO governance foundation is complete. None of this future sequencing blocks the deterministic EO-046 through EO-049 Knowledge Graph. No capability may weaken the Release 2 lifecycle, authorization, persistence, Founder approval, or audit standards.
+EO-050 through EO-054 are deterministic Release 3.2 orders, not AI/CIO orders. Each future Release 4 AI/CIO capability requires its own approved Engineering Order and bounded branch. A later capability may depend on a released earlier capability, but planning approval does not authorize implementation. Executive Voice remains deferred until the AI/CIO governance foundation is complete. None of this future sequencing blocks the deterministic EO-046 through EO-049 Knowledge Graph or deterministic Founder-Simple implementation. No capability may weaken the Release 2 lifecycle, authorization, persistence, Founder approval, or audit standards.

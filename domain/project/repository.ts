@@ -18,4 +18,11 @@ export interface ProjectRepository {
     artifacts: BusinessObject[],
     options?: ProjectMutationOptions,
   ): Promise<Project>;
+  approveWithProductionPackage(
+    projectId: EntityId,
+    packageId: EntityId,
+    packageVersion: number,
+    project: Partial<Project>,
+    options?: ProjectMutationOptions,
+  ): Promise<Project>;
 }

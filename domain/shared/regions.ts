@@ -48,6 +48,11 @@ const stateNameByCode: Record<string, string> = {
   VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
 };
 
+export const hoopFrensStateOptions = Object.values(hoopFrensStateCodesByRegion)
+  .flat()
+  .map((code) => ({ code, name: stateNameByCode[code] }))
+  .sort((first, second) => first.name.localeCompare(second.name));
+
 const stateCodeByNormalizedName = new Map(
   Object.entries(stateNameByCode).map(([code, name]) => [name.toLowerCase(), code]),
 );
@@ -68,6 +73,11 @@ export function normalizeUSStateCode(value: string) {
   const upper = normalized.toUpperCase();
   if (stateNameByCode[upper]) return upper;
   return stateCodeByNormalizedName.get(normalized.toLowerCase()) || null;
+}
+
+export function usStateName(value: string) {
+  const stateCode = normalizeUSStateCode(value);
+  return stateCode ? stateNameByCode[stateCode] || null : null;
 }
 
 export function hoopFrensRegionForState(value: string): KnowledgeRegion | null {

@@ -74,6 +74,21 @@ function exactKeys(value: Record<string, unknown>, allowedKeys: readonly string[
   }
 }
 
+function canonicalJson(value: unknown): string {
+  const normalize = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(normalize);
+    if (!item || typeof item !== "object") return item;
+    return Object.keys(item as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((result, key) => {
+        const entry = (item as Record<string, unknown>)[key];
+        if (entry !== undefined) result[key] = normalize(entry);
+        return result;
+      }, {});
+  };
+  return JSON.stringify(normalize(value));
+}
+
 const statusChangeKeys = ["from", "to", "changedAt", "changedBy", "reason", "version"] as const;
 const confidenceChangeKeys = [...statusChangeKeys, "sourceIds"] as const;
 const sourceReferenceKeys = ["sourceId", "title", "publisher", "reliability", "status"] as const;
@@ -191,14 +206,19 @@ function validateRelationshipConfidenceChange(value: unknown, label: string) {
 }
 
 function validateSchoolData(value: Record<string, unknown>, label: string) {
-  ["officialName", "city", "state", "division", "governingBody"]
+  ["officialName", "city", "state"]
     .forEach((key) => required(value[key], `${label} ${key}`));
   identifier(value.stateNodeId, `${label} stateNodeId`);
   identifier(value.regionNodeId, `${label} regionNodeId`);
   if (value.nickname !== undefined) required(value.nickname, `${label} nickname`);
   enumValue(value.region, Object.values(KnowledgeRegion), `${label} region`);
-  httpUrl(value.schoolWebsite, `${label} school website`);
-  httpUrl(value.athleticsWebsite, `${label} athletics website`);
+  if (value.division !== undefined) required(value.division, `${label} division`);
+  if (value.governingBody !== undefined) required(value.governingBody, `${label} governing body`);
+  if (value.schoolWebsite === undefined && value.athleticsWebsite === undefined) {
+    throw new KnowledgeValidationError(`${label} requires a School or athletics website.`);
+  }
+  if (value.schoolWebsite !== undefined) httpUrl(value.schoolWebsite, `${label} school website`);
+  if (value.athleticsWebsite !== undefined) httpUrl(value.athleticsWebsite, `${label} athletics website`);
   if (value.enrollment !== undefined) finiteNonNegative(value.enrollment, `${label} enrollment`);
   if (value.publicOrPrivate !== undefined && !["public", "private"].includes(String(value.publicOrPrivate))) {
     throw new KnowledgeValidationError(`${label} ownership is invalid.`);
@@ -494,7 +514,7 @@ export function validateKnowledgeNode(node: KnowledgeNode) {
   if (node.category !== expectedCategory[node.type]) throw new KnowledgeValidationError(`${node.type} records must use the ${expectedCategory[node.type]} category.`);
   if (isSchoolKnowledgeNode(node)) {
     validateSchoolData(node as unknown as Record<string, unknown>, "School knowledge");
-    if (JSON.stringify(latestNodeVersion.schoolData) !== JSON.stringify(schoolVersionData(node as unknown as Record<string, unknown>))) {
+    if (canonicalJson(latestNodeVersion.schoolData) !== canonicalJson(schoolVersionData(node as unknown as Record<string, unknown>))) {
       throw new KnowledgeValidationError("The latest School version must reconstruct the current School intelligence fields.");
     }
     if (hoopFrensRegionForState(node.state) !== node.region) throw new KnowledgeValidationError("The selected Region and State must match.");
@@ -626,10 +646,10 @@ function schoolVersionData(item: Record<string, unknown>) {
     region: item.region,
     regionNodeId: item.regionNodeId,
     conference: null,
-    division: item.division,
-    governingBody: item.governingBody,
-    schoolWebsite: item.schoolWebsite,
-    athleticsWebsite: item.athleticsWebsite,
+    ...(item.division === undefined ? {} : { division: item.division }),
+    ...(item.governingBody === undefined ? {} : { governingBody: item.governingBody }),
+    ...(item.schoolWebsite === undefined ? {} : { schoolWebsite: item.schoolWebsite }),
+    ...(item.athleticsWebsite === undefined ? {} : { athleticsWebsite: item.athleticsWebsite }),
     enrollment: item.enrollment,
     tuition: item.tuition,
     publicOrPrivate: item.publicOrPrivate,

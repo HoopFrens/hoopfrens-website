@@ -21,7 +21,23 @@ export function createVolatileProjectStore(initialProjects: Project[] = []): Pro
 }
 
 export function createInMemoryProjectRepository(store: ProjectRepositoryStore = createVolatileProjectStore()): ProjectRepository {
-  function applyUpdate(projectId: EntityId, projectUpdate: Partial<Project>, options?: ProjectMutationOptions) {
+  function founderSimpleProject(project: Partial<Project>) {
+    return Boolean(project.activeSchoolSpotlightPackageId
+      || project.approvedSchoolSpotlightPackageId
+      || project.approvedSchoolSpotlightPackageVersion
+      || project.creationRequestId?.startsWith("founder-simple-"));
+  }
+
+  function schoolSpotlightProject(project: Partial<Project>) {
+    return project.projectType === "school-spotlight" || project.type === "school-spotlight";
+  }
+
+  function applyUpdate(
+    projectId: EntityId,
+    projectUpdate: Partial<Project>,
+    options?: ProjectMutationOptions,
+    exactApproval = false,
+  ) {
     const projects = store.read();
     const existingProject = projects.find((project) => project.id === projectId);
 
@@ -31,6 +47,17 @@ export function createInMemoryProjectRepository(store: ProjectRepositoryStore = 
     }
     if (options?.expectedVersion !== undefined && (existingProject.version || 0) !== options.expectedVersion) {
       throw new Error(`Project update conflict: ${projectId}`);
+    }
+    const nextState = projectUpdate.state ?? existingProject.state;
+    const nextStatus = projectUpdate.status ?? existingProject.status;
+    if (!exactApproval
+      && (schoolSpotlightProject(existingProject)
+        || schoolSpotlightProject(projectUpdate)
+        || founderSimpleProject(existingProject)
+        || founderSimpleProject(projectUpdate))
+      && (nextState === "approved" || nextStatus === "approved")
+      && (existingProject.state !== "approved" || existingProject.status !== "approved")) {
+      throw new Error("Founder approval requires the exact active School Spotlight package version.");
     }
 
     const updatedProject = {
@@ -63,6 +90,20 @@ export function createInMemoryProjectRepository(store: ProjectRepositoryStore = 
     },
     async updateWithArtifacts(projectId, projectUpdate, _artifacts, options) {
       return applyUpdate(projectId, projectUpdate, options);
+    },
+    async approveWithProductionPackage(projectId, packageId, packageVersion, projectUpdate, options) {
+      const project = store.read().find((candidate) => candidate.id === projectId);
+      if (!project || project.activeProductionVersion !== packageVersion
+        || project.activeSchoolSpotlightPackageId !== packageId
+        || project.state !== "review"
+        || project.status !== "review"
+        || projectUpdate.state !== "approved"
+        || projectUpdate.status !== "approved"
+        || projectUpdate.approvedSchoolSpotlightPackageId !== packageId
+        || projectUpdate.approvedSchoolSpotlightPackageVersion !== packageVersion) {
+        throw new Error("Founder approval requires the exact active School Spotlight package version.");
+      }
+      return applyUpdate(projectId, projectUpdate, options, true);
     },
   };
 }

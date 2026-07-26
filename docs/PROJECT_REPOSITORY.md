@@ -26,8 +26,10 @@ The Project Repository is the canonical storage and mutation boundary for Headqu
 2. Only `create` intent reaches project creation. Continue, Review, Approve, Search, navigation, and unsupported commands either operate on existing records or return clarification.
 3. Create commands use a per-submission request ID and deterministic project document ID. The UI also locks the submission while it is in flight.
 4. Research, Outline, and Production services build typed packages and commit each package with its project advancement through `updateWithArtifacts`.
-5. Direct workflow changes use `update` with optimistic conflict protection. A stale client cannot overwrite a newer canonical project or its histories.
-6. Deterministic Executive Intelligence events are written in the same transaction as each canonical project change.
+5. EO-053 builds `SchoolSpotlightPackage` as a compatible Production Package. It uses `updateWithArtifacts` to persist the exact version in `internalProductionPackages`, supersede the prior active version, complete Production, and bind the project’s active Spotlight package ID.
+6. EO-054 approves only the exact active Spotlight package ID and version through `approveWithProductionPackage`; a stale or superseded package cannot satisfy approval.
+7. Direct workflow changes use `update` with optimistic conflict protection. A stale client cannot overwrite a newer canonical project or its histories.
+8. Deterministic Executive Intelligence events are written in the same transaction as each canonical project change.
 
 ## Lifecycle Enforcement
 
@@ -49,11 +51,13 @@ Revision is the explicit `Review -> Production` exception. It clears production 
 
 Production Packages use versioned document IDs. Only the current non-superseded package is active; prior versions remain historical and cannot satisfy readiness after revision.
 
+`SchoolSpotlightPackage` extends `ProductionPackage`. Its canonical header uses `internalProductionPackages`, while protected `internalSchoolSpotlightPackage*` integrity records enforce its supported nested keys, field types, ownership, and linkage before atomic activation. Content validation applies the exact supported scene shape to every vertical-video scene index. Founder workflow autosave remains separate and owner-restricted in `internalFounderWorkflowDrafts`. EO-050 through EO-054 are Engineering Complete; targeted post-remediation Founder Validation and final Independent Review passed with zero P0 and zero P1 findings.
+
 ## Concurrency and Atomicity
 
 Firestore transactions read the canonical project before writing. Mutations may include `expectedUpdatedAt` or `expectedVersion`; mismatches fail with a conflict instead of merging stale state over newer work. Incoming state and workspace histories are merged with canonical history before the new version is stored.
 
-Artifact-producing services do not save the artifact and project as separate operations. If the transaction fails, neither the artifact nor the state advancement is committed.
+Release 2 artifact-producing services keep the artifact and project in one transaction. School Spotlight first writes a noncanonical staged package linked to rules-validated integrity records and then atomically activates that exact package with the project link and prior-version supersession. If activation fails, no package becomes active and no project state advances; the same owner may safely retry the deterministic staged version.
 
 ## Validation Requirements
 

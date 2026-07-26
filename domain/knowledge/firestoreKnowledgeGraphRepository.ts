@@ -20,7 +20,12 @@ import {
   relationshipIdentity,
   validateRelationshipEndpoints,
 } from "./relationshipPolicy";
-import type { KnowledgeGraphRepository, KnowledgeMutationContext } from "./repository";
+import type {
+  KnowledgeGraphRepository,
+  KnowledgeMutationContext,
+  KnowledgeSchoolBundleCreateInput,
+  KnowledgeSchoolBundleResult,
+} from "./repository";
 import {
   serializeKnowledgeAuditEvent,
   serializeKnowledgeNode,
@@ -365,10 +370,10 @@ function schoolVersionData(node: KnowledgeNode): SchoolKnowledgeVersionData | un
     region: node.region,
     regionNodeId: node.regionNodeId,
     conference: node.conference,
-    division: node.division,
-    governingBody: node.governingBody,
-    schoolWebsite: node.schoolWebsite,
-    athleticsWebsite: node.athleticsWebsite,
+    ...(node.division ? { division: node.division } : {}),
+    ...(node.governingBody ? { governingBody: node.governingBody } : {}),
+    ...(node.schoolWebsite ? { schoolWebsite: node.schoolWebsite } : {}),
+    ...(node.athleticsWebsite ? { athleticsWebsite: node.athleticsWebsite } : {}),
     ...(node.enrollment === undefined ? {} : { enrollment: node.enrollment }),
     ...(node.tuition ? { tuition: node.tuition } : {}),
     ...(node.publicOrPrivate ? { publicOrPrivate: node.publicOrPrivate } : {}),
@@ -893,6 +898,490 @@ export function createFirestoreKnowledgeGraphRepository(
       if (!snapshot.exists()) return null;
       const node = decodeNode(snapshot);
       return (await hydratedNodes(node.workspaceId)).find((item) => item.id === nodeId) || node;
+    },
+
+    async createSchoolBundle(bundle: KnowledgeSchoolBundleCreateInput, context: KnowledgeMutationContext) {
+      const mutation = requireMutationContext(context);
+      const workspaceId = bundle.source.workspaceId;
+      if (!workspaceId
+        || bundle.stateNode.workspaceId !== workspaceId
+        || bundle.regionNode.workspaceId !== workspaceId
+        || bundle.schoolNode.workspaceId !== workspaceId
+        || bundle.stateNode.type !== KnowledgeNodeType.State
+        || bundle.regionNode.type !== KnowledgeNodeType.Region
+        || bundle.schoolNode.type !== KnowledgeNodeType.School) {
+        throw new KnowledgeValidationError("A School bundle must use one workspace and canonical School geography types.");
+      }
+
+      await Promise.all([
+        ensureNodeRegistryBootstrapped(workspaceId, KnowledgeNodeType.State, mutation.actorId),
+        ensureNodeRegistryBootstrapped(workspaceId, KnowledgeNodeType.Region, mutation.actorId),
+        ensureNodeRegistryBootstrapped(workspaceId, KnowledgeNodeType.School, mutation.actorId),
+        ensureRelationshipRegistryBootstrapped(workspaceId, mutation.actorId),
+      ]);
+
+      const changedAt = placeholderTime();
+      const makeSource = () => {
+        const audit = newAudit(db, {
+          workspaceId,
+          subjectType: "source",
+          subjectId: bundle.source.id,
+          eventType: KnowledgeAuditEventType.Created,
+          actorId: mutation.actorId,
+          summary: bundle.reasons.source,
+          version: 1,
+          metadata: {},
+        }, changedAt);
+        let source = {
+          ...bundle.source,
+          createdAt: changedAt,
+          updatedAt: changedAt,
+          createdBy: mutation.actorId,
+          updatedBy: mutation.actorId,
+          status: KnowledgeStatus.Active,
+          version: 1,
+          versionHistory: [],
+          statusHistory: initialStatusHistory(
+            KnowledgeStatus.Active,
+            changedAt,
+            mutation.actorId,
+            bundle.reasons.source,
+          ),
+          lastAuditEventId: audit.reference.id,
+        } as KnowledgeSource;
+        source = {
+          ...source,
+          versionHistory: [sourceVersion(source, changedAt, mutation.actorId, bundle.reasons.source)],
+        };
+        return { source: parseKnowledgeSource(source), audit };
+      };
+      const sourceCandidate = makeSource();
+
+      const makeNode = (input: KnowledgeNodeCreateInput, reason: string) => {
+        const audit = newAudit(db, {
+          workspaceId,
+          subjectType: "node",
+          subjectId: input.id,
+          eventType: KnowledgeAuditEventType.Created,
+          actorId: mutation.actorId,
+          summary: reason,
+          version: 1,
+          metadata: {},
+        }, changedAt);
+        let node = neutralizeSchoolDerivedReferences({
+          ...input,
+          sources: [],
+          createdAt: changedAt,
+          updatedAt: changedAt,
+          createdBy: mutation.actorId,
+          updatedBy: mutation.actorId,
+          status: KnowledgeStatus.Active,
+          version: 1,
+          versionHistory: [],
+          confidenceHistory: initialConfidenceHistory(
+            input.confidence,
+            changedAt,
+            mutation.actorId,
+            input.sourceIds,
+            reason,
+          ),
+          statusHistory: initialStatusHistory(KnowledgeStatus.Active, changedAt, mutation.actorId, reason),
+          canonicalNameKeys: nodeCanonicalClaimKeys(input as KnowledgeNode),
+          lastAuditEventId: audit.reference.id,
+        } as KnowledgeNode);
+        node = {
+          ...node,
+          versionHistory: [nodeVersion(node, changedAt, mutation.actorId, reason)],
+        } as KnowledgeNode;
+        return { node: parseKnowledgeNode(node), audit };
+      };
+
+      const stateCandidate = makeNode({
+        ...bundle.stateNode,
+        sourceIds: [bundle.source.id],
+      } as KnowledgeNodeCreateInput, bundle.reasons.stateNode);
+      const regionCandidate = makeNode({
+        ...bundle.regionNode,
+        sourceIds: [bundle.source.id],
+      } as KnowledgeNodeCreateInput, bundle.reasons.regionNode);
+
+      const sourceRef = sourceDocument(db, bundle.source.id);
+      const sourceRegistryRef = claimDocument(db, sourceRegistryId(workspaceId));
+      const stateRegistryRef = claimDocument(db, nodeRegistryId(workspaceId, KnowledgeNodeType.State));
+      const regionRegistryRef = claimDocument(db, nodeRegistryId(workspaceId, KnowledgeNodeType.Region));
+      const schoolRegistryRef = claimDocument(db, nodeRegistryId(workspaceId, KnowledgeNodeType.School));
+      const relationshipRegistryRef = claimDocument(db, relationshipRegistryId(workspaceId));
+
+      const createAttempt = () => runTransaction(db, async (transaction): Promise<{
+        schoolId: string;
+        created: boolean;
+      }> => {
+        const [sourceSnapshot, sourceRegistrySnapshot,
+          stateRegistrySnapshot, regionRegistrySnapshot, schoolRegistrySnapshot,
+          stateExactSnapshot, regionExactSnapshot, schoolExactSnapshot,
+          relationshipRegistrySnapshot] = await Promise.all([
+          transaction.get(sourceRef),
+          transaction.get(sourceRegistryRef),
+          transaction.get(stateRegistryRef),
+          transaction.get(regionRegistryRef),
+          transaction.get(schoolRegistryRef),
+          transaction.get(nodeDocument(db, stateCandidate.node.id)),
+          transaction.get(nodeDocument(db, regionCandidate.node.id)),
+          transaction.get(nodeDocument(db, bundle.schoolNode.id)),
+          transaction.get(relationshipRegistryRef),
+        ]);
+        await options.afterClaimRead?.("node");
+
+        const sourceResult = sourceSnapshot.exists()
+          ? { source: decodeSource(sourceSnapshot), audit: sourceCandidate.audit, created: false }
+          : { ...sourceCandidate, created: true };
+        if (sourceResult.source.workspaceId !== workspaceId || sourceResult.source.status !== KnowledgeStatus.Active) {
+          throw new KnowledgeValidationError(`Historical knowledge source identity remains reserved by ${sourceResult.source.id}.`);
+        }
+
+        const resolveNode = async (
+          candidate: { node: KnowledgeNode; audit: ReturnType<typeof newAudit> },
+          exactSnapshot: RawSnapshot,
+          registrySnapshot: RawSnapshot,
+        ) => {
+          const registry = baseNodeRegistry(
+            registrySnapshot,
+            candidate.node.workspaceId,
+            candidate.node.type,
+          );
+          if (exactSnapshot.exists()) {
+            const existing = decodeNode(exactSnapshot);
+            if (existing.workspaceId === candidate.node.workspaceId
+              && existing.type === candidate.node.type
+              && existing.status === KnowledgeStatus.Active
+              && normalizeCanonicalKnowledgeName(existing.name) === normalizeCanonicalKnowledgeName(candidate.node.name)) {
+              return { node: existing, audit: candidate.audit, created: false, registry };
+            }
+            throw new KnowledgeValidationError(
+              existing.status === KnowledgeStatus.Archived
+                ? `Historical knowledge identity remains reserved by archived node ${existing.id}.`
+                : `Canonical knowledge identity is already reserved by node ${existing.id}.`,
+            );
+          }
+          const ownerIds = sortedUnique(
+            candidate.node.canonicalNameKeys.map((key) => registry.owners[key]).filter(Boolean),
+          );
+          if (ownerIds.length > 1) {
+            throw new KnowledgeValidationError("Canonical identity claims are owned by multiple records.");
+          }
+          if (ownerIds.length === 1) {
+            const ownerSnapshot = await transaction.get(nodeDocument(db, ownerIds[0]));
+            if (!ownerSnapshot.exists()) {
+              throw new KnowledgeValidationError(`Canonical identity claim owner is missing: ${ownerIds[0]}.`);
+            }
+            const owner = decodeNode(ownerSnapshot);
+            if (owner.workspaceId === candidate.node.workspaceId
+              && owner.type === candidate.node.type
+              && owner.status === KnowledgeStatus.Active
+              && normalizeCanonicalKnowledgeName(owner.name) === normalizeCanonicalKnowledgeName(candidate.node.name)) {
+              return { node: owner, audit: candidate.audit, created: false, registry };
+            }
+            throw new KnowledgeValidationError(
+              owner.status === KnowledgeStatus.Archived
+                ? `Historical knowledge identity remains reserved by archived node ${owner.id}.`
+                : `Canonical knowledge identity is already reserved by node ${owner.id}.`,
+            );
+          }
+          const nextRegistry: NodeRegistry = {
+            ...registry,
+            owners: { ...registry.owners },
+            claimedKeysByNode: {
+              ...registry.claimedKeysByNode,
+              [candidate.node.id]: [...candidate.node.canonicalNameKeys],
+            },
+          };
+          candidate.node.canonicalNameKeys.forEach((key) => {
+            nextRegistry.owners[key] = candidate.node.id;
+          });
+          return { ...candidate, created: true, registry: nextRegistry };
+        };
+
+        const stateResult = await resolveNode(stateCandidate, stateExactSnapshot, stateRegistrySnapshot);
+        const regionResult = await resolveNode(regionCandidate, regionExactSnapshot, regionRegistrySnapshot);
+        const schoolCandidate = makeNode({
+          ...bundle.schoolNode,
+          sourceIds: [sourceResult.source.id],
+          stateNodeId: stateResult.node.id,
+          regionNodeId: regionResult.node.id,
+        } as KnowledgeNodeCreateInput, bundle.reasons.schoolNode);
+        if (!isSchoolKnowledgeNode(schoolCandidate.node)) {
+          throw new KnowledgeValidationError("The canonical School bundle did not resolve to a School node.");
+        }
+        validateSchoolRegionalReferences(schoolCandidate.node, stateResult.node, regionResult.node);
+        const schoolResult = await resolveNode(
+          schoolCandidate,
+          schoolExactSnapshot,
+          schoolRegistrySnapshot,
+        );
+        if (!schoolResult.created) {
+          if (!isSchoolKnowledgeNode(schoolResult.node)) {
+            throw new KnowledgeValidationError("The canonical School identity is not a School node.");
+          }
+          return { schoolId: schoolResult.node.id, created: false };
+        }
+
+        const makeRelationship = (
+          targetNode: KnowledgeNode,
+          relationshipType: KnowledgeRelationshipType,
+          input: KnowledgeSchoolBundleCreateInput["stateRelationship"],
+          reason: string,
+        ) => {
+          const id = `relationship-${schoolResult.node.id}-${targetNode.id}`;
+          const relationshipInput: KnowledgeRelationshipCreateInput = {
+            ...input,
+            id,
+            workspaceId,
+            fromNodeId: schoolResult.node.id,
+            toNodeId: targetNode.id,
+            relationshipType,
+            sourceIds: [sourceResult.source.id],
+          };
+          const identityKey = relationshipIdentity(relationshipInput as KnowledgeRelationship);
+          const exclusiveClaimKey = exclusiveKnowledgeRelationshipClaimKey(
+            relationshipInput as KnowledgeRelationship,
+          ) || undefined;
+          const audit = newAudit(db, {
+            workspaceId,
+            subjectType: "relationship",
+            subjectId: id,
+            eventType: KnowledgeAuditEventType.Created,
+            actorId: mutation.actorId,
+            summary: reason,
+            version: 1,
+            metadata: {},
+          }, changedAt);
+          let relationship = {
+            ...relationshipInput,
+            sources: [],
+            createdAt: changedAt,
+            updatedAt: changedAt,
+            createdBy: mutation.actorId,
+            updatedBy: mutation.actorId,
+            status: KnowledgeStatus.Active,
+            version: 1,
+            confidenceHistory: initialConfidenceHistory(
+              relationshipInput.confidence,
+              changedAt,
+              mutation.actorId,
+              relationshipInput.sourceIds,
+              reason,
+            ),
+            versionHistory: [],
+            statusHistory: initialStatusHistory(KnowledgeStatus.Active, changedAt, mutation.actorId, reason),
+            identityKey,
+            ...(exclusiveClaimKey ? { exclusiveClaimKey } : {}),
+            lastAuditEventId: audit.reference.id,
+          } as KnowledgeRelationship;
+          relationship = {
+            ...relationship,
+            versionHistory: [relationshipVersion(relationship, changedAt, mutation.actorId, reason)],
+          };
+          return { relationship: parseKnowledgeRelationship(relationship), audit };
+        };
+
+        const stateRelationshipCandidate = makeRelationship(
+          stateResult.node,
+          KnowledgeRelationshipType.SchoolLocatedInState,
+          bundle.stateRelationship,
+          bundle.reasons.stateRelationship,
+        );
+        const regionRelationshipCandidate = makeRelationship(
+          regionResult.node,
+          KnowledgeRelationshipType.SchoolLocatedInRegion,
+          bundle.regionRelationship,
+          bundle.reasons.regionRelationship,
+        );
+        const [stateRelationshipExactSnapshot, regionRelationshipExactSnapshot] = await Promise.all([
+          transaction.get(relationshipDocument(db, stateRelationshipCandidate.relationship.id)),
+          transaction.get(relationshipDocument(db, regionRelationshipCandidate.relationship.id)),
+        ]);
+        await options.afterClaimRead?.("relationship");
+
+        const resolveRelationship = async (
+          candidate: typeof stateRelationshipCandidate,
+          exactSnapshot: RawSnapshot,
+          registry: RelationshipRegistry,
+        ) => {
+          validateKnowledgeRelationship(
+            candidate.relationship,
+            schoolResult.node,
+            candidate.relationship.toNodeId === stateResult.node.id ? stateResult.node : regionResult.node,
+          );
+          if (exactSnapshot.exists()) {
+            const existing = decodeRelationship(exactSnapshot);
+            if (existing.status === KnowledgeStatus.Active
+              && existing.workspaceId === workspaceId
+              && existing.identityKey === candidate.relationship.identityKey) {
+              return { relationship: existing, audit: candidate.audit, created: false, registry };
+            }
+            throw new KnowledgeValidationError(`Historical relationship identity remains reserved by ${existing.id}.`);
+          }
+          const ownerId = registry.exactOwners[candidate.relationship.identityKey];
+          if (ownerId) {
+            const ownerSnapshot = await transaction.get(relationshipDocument(db, ownerId));
+            if (!ownerSnapshot.exists()) {
+              throw new KnowledgeValidationError(`Relationship identity owner is missing: ${ownerId}.`);
+            }
+            const owner = decodeRelationship(ownerSnapshot);
+            if (owner.status === KnowledgeStatus.Active
+              && owner.workspaceId === workspaceId
+              && owner.identityKey === candidate.relationship.identityKey) {
+              return { relationship: owner, audit: candidate.audit, created: false, registry };
+            }
+            throw new KnowledgeValidationError(`Historical relationship identity remains reserved by ${owner.id}.`);
+          }
+          const exclusiveKey = candidate.relationship.exclusiveClaimKey;
+          const exclusiveIds = exclusiveKey ? registry.exclusiveActive[exclusiveKey] || [] : [];
+          const conflictSnapshots = await Promise.all(
+            exclusiveIds.map((id) => transaction.get(relationshipDocument(db, id))),
+          );
+          for (const conflictSnapshot of conflictSnapshots) {
+            if (!conflictSnapshot.exists()) {
+              throw new KnowledgeValidationError("The relationship registry references a missing active record.");
+            }
+            const conflict = decodeRelationship(conflictSnapshot);
+            if (conflict.status === KnowledgeStatus.Active
+              && conflict.identityKey !== candidate.relationship.identityKey) {
+              throw new KnowledgeValidationError(
+                "The School already has a different active geography relationship. Resolve it before continuing.",
+              );
+            }
+          }
+          const nextRegistry: RelationshipRegistry = {
+            ...registry,
+            exactOwners: {
+              ...registry.exactOwners,
+              [candidate.relationship.identityKey]: candidate.relationship.id,
+            },
+            activeRelationshipIds: sortedUnique([
+              ...registry.activeRelationshipIds,
+              candidate.relationship.id,
+            ]),
+            exclusiveActive: exclusiveKey ? {
+              ...registry.exclusiveActive,
+              [exclusiveKey]: sortedUnique([
+                ...(registry.exclusiveActive[exclusiveKey] || []),
+                candidate.relationship.id,
+              ]),
+            } : registry.exclusiveActive,
+            endpointActive: {
+              ...registry.endpointActive,
+              [candidate.relationship.fromNodeId]: sortedUnique([
+                ...(registry.endpointActive[candidate.relationship.fromNodeId] || []),
+                candidate.relationship.id,
+              ]),
+              [candidate.relationship.toNodeId]: sortedUnique([
+                ...(registry.endpointActive[candidate.relationship.toNodeId] || []),
+                candidate.relationship.id,
+              ]),
+            },
+          };
+          return { ...candidate, created: true, registry: nextRegistry };
+        };
+
+        const relationshipRegistry = baseRelationshipRegistry(relationshipRegistrySnapshot, workspaceId);
+        const stateRelationshipResult = await resolveRelationship(
+          stateRelationshipCandidate,
+          stateRelationshipExactSnapshot,
+          relationshipRegistry,
+        );
+        const regionRelationshipResult = await resolveRelationship(
+          regionRelationshipCandidate,
+          regionRelationshipExactSnapshot,
+          stateRelationshipResult.registry,
+        );
+
+        const createdNodes = [stateResult, regionResult, schoolResult].filter((item) => item.created);
+        const createdRelationships = [stateRelationshipResult, regionRelationshipResult]
+          .filter((item) => item.created);
+        let sourceRegistry = baseSourceRegistry(sourceRegistrySnapshot, workspaceId);
+        sourceRegistry = {
+          ...sourceRegistry,
+          activeSourceIds: sortedUnique([...sourceRegistry.activeSourceIds, sourceResult.source.id]),
+        };
+        for (const item of createdNodes) {
+          sourceRegistry = sourceUsage(
+            sourceRegistry,
+            item.node.sourceIds,
+            `node:${item.node.id}`,
+            true,
+          );
+        }
+        for (const item of createdRelationships) {
+          sourceRegistry = sourceUsage(
+            sourceRegistry,
+            item.relationship.sourceIds,
+            `relationship:${item.relationship.id}`,
+            true,
+          );
+        }
+
+        const createdAudits = [
+          ...(sourceResult.created ? [sourceResult.audit] : []),
+          ...createdNodes.map((item) => item.audit),
+          ...createdRelationships.map((item) => item.audit),
+        ];
+        for (const audit of createdAudits) await options.beforeAuditWrite?.(audit.event);
+
+        if (sourceResult.created) {
+          transaction.set(sourceRef, sourceWriteData(sourceResult.source));
+        }
+        if (stateResult.created) {
+          transaction.set(nodeDocument(db, stateResult.node.id), nodeWriteData(stateResult.node));
+          transaction.set(
+            stateRegistryRef,
+            claimWriteData(stateResult.registry, stateRegistrySnapshot.data(), mutation.actorId),
+          );
+        }
+        if (regionResult.created) {
+          transaction.set(nodeDocument(db, regionResult.node.id), nodeWriteData(regionResult.node));
+          transaction.set(
+            regionRegistryRef,
+            claimWriteData(regionResult.registry, regionRegistrySnapshot.data(), mutation.actorId),
+          );
+        }
+        transaction.set(nodeDocument(db, schoolResult.node.id), nodeWriteData(schoolResult.node));
+        transaction.set(
+          schoolRegistryRef,
+          claimWriteData(schoolResult.registry, schoolRegistrySnapshot.data(), mutation.actorId),
+        );
+        for (const item of createdRelationships) {
+          transaction.set(
+            relationshipDocument(db, item.relationship.id),
+            relationshipWriteData(item.relationship),
+          );
+        }
+        transaction.set(
+          relationshipRegistryRef,
+          claimWriteData(regionRelationshipResult.registry, relationshipRegistrySnapshot.data(), mutation.actorId),
+        );
+        transaction.set(
+          sourceRegistryRef,
+          claimWriteData(sourceRegistry, sourceRegistrySnapshot.data(), mutation.actorId),
+        );
+        for (const audit of createdAudits) {
+          transaction.set(audit.reference, auditWriteData(audit.event));
+        }
+        return { schoolId: schoolResult.node.id, created: true };
+      });
+
+      let result: { schoolId: string; created: boolean };
+      try {
+        result = await createAttempt();
+      } catch (error) {
+        if (!isRetryableClaimRace(error)) throw error;
+        result = await createAttempt();
+      }
+      const school = await readAfterNode(result.schoolId);
+      if (!isSchoolKnowledgeNode(school)) {
+        throw new KnowledgeValidationError("The canonical School bundle did not reopen as a School node.");
+      }
+      return { school, created: result.created } satisfies KnowledgeSchoolBundleResult;
     },
 
     async createNode(input: KnowledgeNodeCreateInput, context: KnowledgeMutationContext) {

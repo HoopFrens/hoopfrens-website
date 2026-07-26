@@ -112,6 +112,18 @@ function createRepositories(initialProject: Project) {
       project = nextProject;
       return project;
     },
+    async approveWithProductionPackage(projectId, packageId, packageVersion, update, options) {
+      if (project.id !== projectId) throw new Error("Project not found");
+      if (options?.expectedUpdatedAt && project.updatedAt !== options.expectedUpdatedAt) throw new Error("Project update conflict");
+      if (project.activeProductionVersion !== packageVersion
+        || project.activeSchoolSpotlightPackageId !== packageId
+        || update.approvedSchoolSpotlightPackageId !== packageId
+        || update.approvedSchoolSpotlightPackageVersion !== packageVersion) {
+        throw new Error("Founder approval requires the exact active School Spotlight package version.");
+      }
+      project = { ...project, ...update };
+      return project;
+    },
   };
 
   const researchPackageRepository: ResearchPackageRepository = {
@@ -135,6 +147,9 @@ function createRepositories(initialProject: Project) {
   };
 
   const productionPackageRepository: ProductionPackageRepository = {
+    async getById(packageId) {
+      return productionPackage?.id === packageId ? productionPackage : null;
+    },
     async getByProjectId(projectId) {
       return productionPackage?.projectId === projectId ? productionPackage : null;
     },
@@ -424,7 +439,13 @@ test("Publishing Service advances only Approved projects to Published", async ()
 });
 
 test("stale project mutations are rejected without losing canonical history", async () => {
-  const original = createProject(ProjectStatus.Review);
+  // Keep this concurrency regression on a non-Founder-Simple project. School
+  // Spotlight projects now require the exact active package approval path.
+  const original = {
+    ...createProject(ProjectStatus.Review),
+    type: ProjectType.PodcastEpisode,
+    projectType: ProjectType.PodcastEpisode,
+  };
   const repository = createInMemoryProjectRepository(createVolatileProjectStore([original]));
   const first = await repository.update(
     original.id,
