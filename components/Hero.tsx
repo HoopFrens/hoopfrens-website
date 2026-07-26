@@ -54,7 +54,7 @@ export function Hero() {
         <div className="mt-8 border-b border-zinc-200">
           <div className="flex flex-col gap-6 pb-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-red-600">Hoop Frens</p>
+              <p className="text-xs font-black uppercase tracking-widest text-red-600">Everybody Hoops. Everyone&apos;s Welcome.</p>
               <h1 className="mt-3 text-5xl font-black leading-none text-zinc-950 sm:text-6xl lg:text-7xl">Men&apos;s Basketball</h1>
             </div>
             <nav className="flex gap-8 overflow-x-auto text-xs font-black uppercase text-zinc-500" aria-label="Landing page sections">
