@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AccessRestricted } from "@/components/admin/AccessRestricted";
 import { accessDeniedCopy, collectionManagerKey } from "@/components/admin/adminDashboardUtils";
+import { HeadquartersAccountFooter } from "@/components/executive/HeadquartersAccountFooter";
+import {
+  completeHeadquartersSignOut,
+  headquartersLoginRoute,
+} from "@/components/executive/headquartersSignOut";
 import { IntentType } from "@/domain/intent";
 import {
   adminAuthorizationService,
@@ -60,6 +65,76 @@ test("Access Restricted view omits identity details and exposes a Sign Out actio
   assert.doesNotMatch(markup, /@/);
   assert.doesNotMatch(markup, /admin role/i);
   assert.doesNotMatch(markup, /Return to Sign In/i);
+});
+
+test("Headquarters account footer exposes an accessible, visible Sign Out action", () => {
+  const markup = renderToStaticMarkup(createElement(HeadquartersAccountFooter, {
+    userLabel: "founder@example.com",
+    signingOut: false,
+    signOutError: "",
+    onSignOut() {},
+  }));
+
+  assert.match(markup, /Signed in/i);
+  assert.match(markup, /founder@example\.com/);
+  assert.match(markup, /type="button"/);
+  assert.match(markup, /Sign Out/);
+  assert.match(markup, /min-h-11/);
+  assert.match(markup, /focus-visible:outline-2/);
+});
+
+test("Headquarters account footer reports sign-out progress and friendly failures", () => {
+  const progressMarkup = renderToStaticMarkup(createElement(HeadquartersAccountFooter, {
+    userLabel: "Founder",
+    signingOut: true,
+    signOutError: "",
+    onSignOut() {},
+  }));
+  assert.match(progressMarkup, /aria-busy="true"/);
+  assert.match(progressMarkup, /disabled=""/);
+  assert.match(progressMarkup, /Signing Out/);
+
+  const errorMarkup = renderToStaticMarkup(createElement(HeadquartersAccountFooter, {
+    userLabel: "Founder",
+    signingOut: false,
+    signOutError: "Sign out was unsuccessful. Please try again.",
+    onSignOut() {},
+  }));
+  assert.match(errorMarkup, /role="alert"/);
+  assert.match(errorMarkup, /Sign out was unsuccessful\. Please try again\./);
+});
+
+test("Headquarters sign-out completes before redirecting to the approved login route", async () => {
+  const events: string[] = [];
+
+  await completeHeadquartersSignOut(
+    async () => {
+      events.push("sign-out");
+    },
+    (path) => {
+      events.push(`redirect:${path}`);
+    },
+  );
+
+  assert.equal(headquartersLoginRoute, "/admin/login");
+  assert.deepEqual(events, ["sign-out", "redirect:/admin/login"]);
+});
+
+test("Headquarters sign-out failure does not redirect", async () => {
+  const redirects: string[] = [];
+
+  await assert.rejects(
+    completeHeadquartersSignOut(
+      async () => {
+        throw new Error("Firebase sign-out failed");
+      },
+      (path) => {
+        redirects.push(path);
+      },
+    ),
+    /Firebase sign-out failed/,
+  );
+  assert.deepEqual(redirects, []);
 });
 
 function classify(text: string) {

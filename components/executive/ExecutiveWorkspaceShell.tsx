@@ -38,10 +38,12 @@ import { OpportunitiesRecommendations } from "@/components/executive/Opportuniti
 import { KnowledgeExplorer } from "@/components/executive/KnowledgeExplorer";
 import { ProjectWorkspace as ProjectsWorkspace } from "@/components/executive/ProjectWorkspace";
 import { projectWorkflowNotification } from "@/components/executive/projectWorkflowNotification";
+import { HeadquartersAccountFooter } from "@/components/executive/HeadquartersAccountFooter";
+import { completeHeadquartersSignOut } from "@/components/executive/headquartersSignOut";
 import { FounderReviewQueue } from "@/components/founder/FounderReviewQueue";
 import { FounderIntelligence } from "@/components/founder/FounderIntelligence";
 import { FounderSimpleCreate } from "@/components/founder/FounderSimpleCreate";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import {
   Archive,
@@ -390,7 +392,27 @@ const advancedExecutiveSpaceIds: ExecutiveSpaceId[] = [
 export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: ExecutiveSpaceId }) {
   const [status, setStatus] = useState<WorkspaceStatus>(isFirebaseConfigured ? "checking" : "unconfigured");
   const [user, setUser] = useState<User | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const router = useRouter();
   const activeSpace = executiveSpaces.find((space) => space.id === activeSpaceId) || executiveSpaces[0];
+
+  async function handleSignOut() {
+    const activeAuth = auth;
+    if (!activeAuth || signingOut) return;
+
+    setSigningOut(true);
+    setSignOutError("");
+    try {
+      await completeHeadquartersSignOut(
+        () => signOut(activeAuth),
+        (path) => router.replace(path),
+      );
+    } catch {
+      setSignOutError("Sign out was unsuccessful. Please try again.");
+      setSigningOut(false);
+    }
+  }
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -532,10 +554,12 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
               </div>
             </details>
           </nav>
-          <div className="mt-auto hidden border-t border-white/10 p-4 lg:block">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Signed in</p>
-            <p className="mt-2 truncate text-xs font-bold text-zinc-300">{userLabel}</p>
-          </div>
+          <HeadquartersAccountFooter
+            onSignOut={() => void handleSignOut()}
+            signingOut={signingOut}
+            signOutError={signOutError}
+            userLabel={userLabel}
+          />
         </aside>
 
         <section className="flex min-h-0 flex-col">
