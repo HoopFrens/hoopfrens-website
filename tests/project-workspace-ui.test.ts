@@ -8,7 +8,16 @@ import {
   resolvePackageOverlayReturnFocus,
 } from "@/components/executive/PackageOverlay";
 import { ProductionPackagePanel } from "@/components/executive/ProductionPackagePanel";
-import { ProjectDetailPanel } from "@/components/executive/ProjectDetailPanel";
+import {
+  executiveServiceActionClassName,
+  executiveServiceLabelClassName,
+  executiveServicesGridClassName,
+  ProjectDetailPanel,
+} from "@/components/executive/ProjectDetailPanel";
+import {
+  projectTableColumns,
+  projectTableMinimumWidthClassName,
+} from "@/components/executive/ProjectWorkspace";
 import { ResearchPackagePanel } from "@/components/executive/ResearchPackagePanel";
 import { ArtifactStatus, ArtifactType } from "@/domain/business-object";
 import { ProjectType, ProjectWorkspace, type Project } from "@/domain/project";
@@ -214,6 +223,49 @@ test("Project Brief renders disabled Review reason without nesting package viewe
   assert.match(markup, /aria-describedby="project-action-review-reason"/);
   assert.match(markup, /Review is unavailable\. Complete Research, Outline, and Production first\./);
   assert.doesNotMatch(markup, /data-package-content=/);
+});
+
+test("Projects table reserves readable Updated and Recommended Next Action columns", () => {
+  assert.equal(projectTableMinimumWidthClassName, "min-w-[1628px]");
+  assert.deepEqual(
+    projectTableColumns.map(({ heading }) => heading),
+    [
+      "Title",
+      "Recommendation",
+      "Type",
+      "Current Workspace",
+      "State",
+      "Priority",
+      "Priority Score",
+      "Progress",
+      "Owner",
+      "Updated",
+      "Recommended Next Action",
+    ],
+  );
+  assert.equal(projectTableColumns.find(({ key }) => key === "updated")?.widthClassName, "w-48");
+  assert.equal(projectTableColumns.find(({ key }) => key === "next-action")?.widthClassName, "w-80");
+});
+
+test("Executive Services uses one intrinsic-height action per row with wrapped labels and visible focus", () => {
+  assert.equal(executiveServicesGridClassName, "mt-3 grid grid-cols-1 gap-2");
+  assert.match(executiveServiceActionClassName, /min-h-12/);
+  assert.match(executiveServiceActionClassName, /h-auto/);
+  assert.match(executiveServiceActionClassName, /focus-visible:outline-2/);
+  assert.match(executiveServiceLabelClassName, /whitespace-normal/);
+  assert.match(executiveServiceLabelClassName, /break-words/);
+
+  const draftMarkup = renderProjectDetail(createProject(ProjectStatus.Draft));
+  assert.match(draftMarkup, /data-executive-services/);
+  assert.equal((draftMarkup.match(/data-executive-service-action/g) || []).length, 4);
+  assert.match(draftMarkup, /Run Research Service/);
+  assert.match(draftMarkup, /Open Research Package/);
+  assert.match(draftMarkup, /Open Outline Package/);
+  assert.match(draftMarkup, /Open Production Package/);
+  assert.doesNotMatch(draftMarkup, /sm:grid-cols-2/);
+
+  assert.match(renderProjectDetail(createProject(ProjectStatus.Outline)), /Run Outline Service/);
+  assert.match(renderProjectDetail(createProject(ProjectStatus.Production)), /Run Production Service/);
 });
 
 test("package viewers render in one large, scroll-safe dialog frame", () => {

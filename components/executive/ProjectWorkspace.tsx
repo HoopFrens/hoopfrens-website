@@ -76,6 +76,22 @@ const priorityRank: Record<Priority, number> = {
   [Priority.Low]: 1,
 };
 
+export const projectTableColumns = [
+  { key: "title", heading: "Title", widthClassName: "w-[220px]" },
+  { key: "recommendation", heading: "Recommendation", widthClassName: "w-32" },
+  { key: "type", heading: "Type", widthClassName: "w-28" },
+  { key: "workspace", heading: "Current Workspace", widthClassName: "w-32" },
+  { key: "state", heading: "State", widthClassName: "w-24" },
+  { key: "priority", heading: "Priority", widthClassName: "w-20" },
+  { key: "priority-score", heading: "Priority Score", widthClassName: "w-24" },
+  { key: "progress", heading: "Progress", widthClassName: "w-32" },
+  { key: "owner", heading: "Owner", widthClassName: "w-32" },
+  { key: "updated", heading: "Updated", widthClassName: "w-48" },
+  { key: "next-action", heading: "Recommended Next Action", widthClassName: "w-80" },
+] as const;
+
+export const projectTableMinimumWidthClassName = "min-w-[1628px]";
+
 function sortProjects(
   projects: Project[],
   sortBy: SortOption,
@@ -734,38 +750,29 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                 No projects match the current search and filters.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1452px] table-fixed border-collapse text-left">
+              <div
+                aria-label="Projects table"
+                className="max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-red-500"
+                data-projects-table-scroll
+                role="region"
+                tabIndex={0}
+              >
+                <table className={`w-full ${projectTableMinimumWidthClassName} table-fixed border-collapse text-left`} data-projects-table>
                   <colgroup>
-                    <col className="w-[220px]" />
-                    <col className="w-32" />
-                    <col className="w-28" />
-                    <col className="w-32" />
-                    <col className="w-24" />
-                    <col className="w-20" />
-                    <col className="w-24" />
-                    <col className="w-32" />
-                    <col className="w-32" />
-                    <col className="w-28" />
-                    <col className="w-56" />
+                    {projectTableColumns.map((column) => (
+                      <col key={column.key} className={column.widthClassName} />
+                    ))}
                   </colgroup>
                   <thead className="border-b border-white/10 bg-black">
                     <tr>
-                      {[
-                        "Title",
-                        "Recommendation",
-                        "Type",
-                        "Current Workspace",
-                        "State",
-                        "Priority",
-                        "Priority Score",
-                        "Progress",
-                        "Owner",
-                        "Updated",
-                        "Recommended Next Action",
-                      ].map((heading) => (
-                        <th key={heading} scope="col" className="px-3 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">
-                          {heading}
+                      {projectTableColumns.map((column) => (
+                        <th
+                          key={column.key}
+                          className="break-words px-3 py-3 align-top text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600"
+                          data-project-column={column.key}
+                          scope="col"
+                        >
+                          {column.heading}
                         </th>
                       ))}
                     </tr>
@@ -777,33 +784,33 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                       const recommendation = recommendationByProjectId.get(project.id);
                       const founderPriorityRank = founderPriorityRankByProjectId.get(project.id);
                       return (
-                        <tr key={project.id} className={`border-b border-white/5 transition ${selected ? "bg-red-500/10" : "hover:bg-white/[0.03]"}`}>
-                          <td className="max-w-72 px-3 py-3">
+                        <tr key={project.id} className={`border-b border-white/5 align-top transition ${selected ? "bg-red-500/10" : "hover:bg-white/[0.03]"}`}>
+                          <td className="max-w-72 px-3 py-3" data-project-column="title">
                             <button type="button" onClick={() => selectProject(project.id)} className="text-left text-sm font-black leading-5 text-white transition hover:text-red-400">
                               {project.title}
                             </button>
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-3" data-project-column="recommendation">
                             <p className="text-sm font-black text-white">{recommendation?.score ?? 0}</p>
                             <p className="mt-1 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.12em] text-red-400">
                               {recommendation?.actionLabel || "Archived"}
                             </p>
                           </td>
-                          <td className="px-3 py-3 text-xs font-bold text-zinc-300">{formatProjectType(getProjectType(project))}</td>
-                          <td className="px-3 py-3 text-xs font-bold text-zinc-300">{formatProjectWorkspace(project.currentWorkspace)}</td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-3 text-xs font-bold text-zinc-300" data-project-column="type">{formatProjectType(getProjectType(project))}</td>
+                          <td className="px-3 py-3 text-xs font-bold text-zinc-300" data-project-column="workspace">{formatProjectWorkspace(project.currentWorkspace)}</td>
+                          <td className="px-3 py-3" data-project-column="state">
                             <span className="border border-red-500/25 bg-red-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-200">
                               {formatProjectState(getProjectState(project))}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-xs font-black text-zinc-300">{formatProjectPriority(project.priority)}</td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-3 text-xs font-black text-zinc-300" data-project-column="priority">{formatProjectPriority(project.priority)}</td>
+                          <td className="px-3 py-3" data-project-column="priority-score">
                             <p className="text-sm font-black text-white">{assessment?.priorityScore ?? 0}</p>
                             <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-400">
                               {founderPriorityRank ? `Priority #${founderPriorityRank}` : "Active"}
                             </p>
                           </td>
-                          <td className="w-36 px-3 py-3">
+                          <td className="w-36 px-3 py-3" data-project-column="progress">
                             <div className="flex items-center gap-2">
                               <div className="h-1.5 w-20 overflow-hidden bg-white/10">
                                 <div className="h-full bg-red-500" style={{ width: `${Math.min(100, Math.max(0, project.progressPercent))}%` }} />
@@ -811,11 +818,13 @@ export function ProjectWorkspace({ currentUserId, currentUserLabel }: ProjectWor
                               <span className="text-[10px] font-black text-zinc-400">{project.progressPercent}%</span>
                             </div>
                           </td>
-                          <td className="break-words px-3 py-3 text-xs font-bold leading-5 text-zinc-300">{formatProjectOwner(project, currentUserId, currentUserLabel)}</td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-bold text-zinc-400">{formatProjectDate(project.updatedAt)}</td>
-                          <td className="max-w-80 px-3 py-3">
-                            <p className="text-xs font-bold leading-5 text-zinc-300">{recommendation?.headline || "No active recommendation"}</p>
-                            <p className="mt-1 text-[10px] font-bold leading-4 text-zinc-600">
+                          <td className="break-words px-3 py-3 text-xs font-bold leading-5 text-zinc-300" data-project-column="owner">{formatProjectOwner(project, currentUserId, currentUserLabel)}</td>
+                          <td className="break-words px-3 py-3 text-xs font-bold leading-5 text-zinc-400" data-project-column="updated">
+                            <time dateTime={project.updatedAt}>{formatProjectDate(project.updatedAt)}</time>
+                          </td>
+                          <td className="max-w-80 break-words px-3 py-3" data-project-column="next-action">
+                            <p className="break-words text-xs font-bold leading-5 text-zinc-300">{recommendation?.headline || "No active recommendation"}</p>
+                            <p className="mt-1 break-words text-[10px] font-bold leading-4 text-zinc-400">
                               Why now: {recommendation?.whyNow || "The project is outside the active recommendation set."}
                             </p>
                           </td>

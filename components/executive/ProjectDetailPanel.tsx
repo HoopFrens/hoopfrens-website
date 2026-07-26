@@ -52,6 +52,11 @@ const actionConfiguration = [
   { action: "archive", label: "Archive", icon: Archive },
 ] as const;
 
+export const executiveServicesGridClassName = "mt-3 grid grid-cols-1 gap-2";
+export const executiveServiceActionClassName =
+  "flex min-h-12 h-auto w-full items-center justify-start gap-3 px-3 py-3 text-[10px] font-black uppercase leading-4 tracking-[0.12em] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-50";
+export const executiveServiceLabelClassName = "min-w-0 flex-1 whitespace-normal break-words text-left";
+
 export function ProjectDetailPanel({
   project,
   priorityAssessment,
@@ -207,16 +212,17 @@ export function ProjectDetailPanel({
 
         <section className="border-b border-white/10 p-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Executive Services</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className={executiveServicesGridClassName} data-executive-services>
             {state === ProjectStatus.Draft || state === ProjectStatus.Research ? (
               <button
                 type="button"
                 onClick={onRunResearch}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${executiveServiceActionClassName} bg-red-600 text-white hover:bg-red-500`}
+                data-executive-service-action
               >
-                <FlaskConical size={14} />
-                {servicePending ? "Running Research" : "Run Research Service"}
+                <FlaskConical aria-hidden="true" className="shrink-0" size={14} />
+                <span className={executiveServiceLabelClassName}>{servicePending ? "Running Research" : "Run Research Service"}</span>
               </button>
             ) : null}
             {state === ProjectStatus.Outline ? (
@@ -224,10 +230,11 @@ export function ProjectDetailPanel({
                 type="button"
                 onClick={onRunOutline}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${executiveServiceActionClassName} bg-red-600 text-white hover:bg-red-500`}
+                data-executive-service-action
               >
-                <FileStack size={14} />
-                {servicePending ? "Building Outline" : "Run Outline Service"}
+                <FileStack aria-hidden="true" className="shrink-0" size={14} />
+                <span className={executiveServiceLabelClassName}>{servicePending ? "Building Outline" : "Run Outline Service"}</span>
               </button>
             ) : null}
             {state === ProjectStatus.Production ? (
@@ -235,38 +242,42 @@ export function ProjectDetailPanel({
                 type="button"
                 onClick={onRunProduction}
                 disabled={servicePending}
-                className="flex h-10 items-center justify-center gap-2 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${executiveServiceActionClassName} bg-red-600 text-white hover:bg-red-500`}
+                data-executive-service-action
               >
-                <Clapperboard size={14} />
-                {servicePending ? "Building Package" : "Run Production Service"}
+                <Clapperboard aria-hidden="true" className="shrink-0" size={14} />
+                <span className={executiveServiceLabelClassName}>{servicePending ? "Building Package" : "Run Production Service"}</span>
               </button>
             ) : null}
             <button
               type="button"
               onClick={(event) => onOpenResearchPackage(event.currentTarget)}
               disabled={researchPackageLoading}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${executiveServiceActionClassName} border border-white/10 text-zinc-300 hover:border-red-500 hover:text-white`}
+              data-executive-service-action
             >
-              <BookOpenCheck size={14} />
-              {researchPackageLoading ? "Opening Package" : "Open Research Package"}
+              <BookOpenCheck aria-hidden="true" className="shrink-0" size={14} />
+              <span className={executiveServiceLabelClassName}>{researchPackageLoading ? "Opening Package" : "Open Research Package"}</span>
             </button>
             <button
               type="button"
               onClick={(event) => onOpenOutlinePackage(event.currentTarget)}
               disabled={outlinePackageLoading}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${executiveServiceActionClassName} border border-white/10 text-zinc-300 hover:border-red-500 hover:text-white`}
+              data-executive-service-action
             >
-              <FileStack size={14} />
-              {outlinePackageLoading ? "Opening Package" : "Open Outline Package"}
+              <FileStack aria-hidden="true" className="shrink-0" size={14} />
+              <span className={executiveServiceLabelClassName}>{outlinePackageLoading ? "Opening Package" : "Open Outline Package"}</span>
             </button>
             <button
               type="button"
               onClick={(event) => onOpenProductionPackage(event.currentTarget)}
               disabled={productionPackageLoading}
-              className="flex h-10 items-center justify-center gap-2 border border-white/10 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-300 transition hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${executiveServiceActionClassName} border border-white/10 text-zinc-300 hover:border-red-500 hover:text-white`}
+              data-executive-service-action
             >
-              <Clapperboard size={14} />
-              {productionPackageLoading ? "Opening Package" : "Open Production Package"}
+              <Clapperboard aria-hidden="true" className="shrink-0" size={14} />
+              <span className={executiveServiceLabelClassName}>{productionPackageLoading ? "Opening Package" : "Open Production Package"}</span>
             </button>
           </div>
         </section>
