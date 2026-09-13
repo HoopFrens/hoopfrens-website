@@ -2,7 +2,7 @@
 
 ## Status
 
-Release 3.2 is a deterministic Founder-Simple Headquarters capability. EO-050 through EO-054 are **Engineering Complete with all P1 remediation applied**. **Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, passed.** Final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; required pull-request checks and the merge remain pending.
+Release 3.2 is a deterministic Founder-Simple Headquarters capability. EO-050 through EO-054 are **Engineering Complete with all P1 remediation applied**. **Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, passed.** Final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; PR #7 is merged and Release 3.2 is released and production validated.
 
 This capability does not authorize AI, external APIs, external search, autonomous employees, public-site changes, automated publishing, or EO work beyond EO-054.
 
@@ -169,15 +169,15 @@ Founder confirmation in Add School invokes one `KnowledgeGraphRepository.createS
 
 | Engineering Order | Capability | Planned outcome | Status |
 | --- | --- | --- | --- |
-| EO-050 | Founder-Simple Foundation | Principle, navigation, action catalog, shared guided-flow shell, terminology, progressive disclosure, and durable draft boundary | Ready to commit; Founder Validation and Independent Review passed |
-| EO-051 | Guided Add School | Source-backed guided creation with derived state/region and no exposed IDs or duplicate authoring | Ready to commit; Founder Validation and Independent Review passed |
-| EO-052 | School Spotlight Request and Verified Information Review | Request wizard, canonical School selection, deterministic fact resolution, and include/correct/exclude review | Ready to commit; Founder Validation and Independent Review passed |
-| EO-053 | Deterministic School Spotlight Package | Versioned initial package with one reusable vertical-video plan, Instagram caption, photo/video shot list, source and verification package, and unresolved-information handling | Ready to commit; Founder Validation and Independent Review passed |
-| EO-054 | Founder Customization and Approval | Tone/platform/brand customization, version review, revision, readiness explanation, and explicit existing-lifecycle approval | Ready to commit; Founder Validation and Independent Review passed |
+| EO-050 | Founder-Simple Foundation | Principle, navigation, action catalog, shared guided-flow shell, terminology, progressive disclosure, and durable draft boundary | Released and production validated |
+| EO-051 | Guided Add School | Source-backed guided creation with derived state/region and no exposed IDs or duplicate authoring | Released and production validated |
+| EO-052 | School Spotlight Request and Verified Information Review | Request wizard, canonical School selection, deterministic fact resolution, and include/correct/exclude review | Released and production validated |
+| EO-053 | Deterministic School Spotlight Package | Versioned initial package with one reusable vertical-video plan, Instagram caption, photo/video shot list, source and verification package, and unresolved-information handling | Released and production validated |
+| EO-054 | Founder Customization and Approval | Tone/platform/brand customization, version review, revision, readiness explanation, and explicit existing-lifecycle approval | Released and production validated |
 
-EO-050 through EO-054 form the completed engineering batch for one Founder-visible path without AI or external APIs. EO-053 supports only one vertical-video package usable for Instagram Reel, TikTok, and YouTube Short; one Instagram caption; one photo/video shot list; and one source and verification package. Additional platform outputs remain future scope. Engineering completion does not waive Founder validation, independent review, or merge approval.
+EO-050 through EO-054 form the completed engineering batch for one Founder-visible path without AI or external APIs. EO-053 supports only one vertical-video package usable for Instagram Reel, TikTok, and YouTube Short; one Instagram caption; one photo/video shot list; and one source and verification package. Additional platform outputs are outside Release 3.2 and are implemented separately in the active Release 4.1 batch. Engineering completion does not waive Founder validation, independent review, or merge approval.
 
-EO-055 has not started and is not authorized by this batch.
+EO-055 was excluded from Release 3.2. It is separately authorized in Release 4.1; local implementation is present and connected validation remains pending.
 
 ## Founder Validation Record
 
@@ -185,7 +185,7 @@ Targeted post-remediation Founder Validation reused the existing Malone Universi
 
 ## Release 4 and Future Autonomy
 
-Future governed AI/CIO work belongs to Release 4 and remains blocked by the decisions in [`RELEASE_3_1_DECISION_PACKAGE.md`](./RELEASE_3_1_DECISION_PACKAGE.md), despite that file’s historical name. Release 4 may assist with explanation, research, or editorial drafting only behind approved governance and deterministic service boundaries.
+Release 4.1 Governed Content Intelligence, EO-055 through EO-059, is the active Founder-authorized batch. The [re-entry audit](./RELEASE_4_1_REENTRY_AUDIT.md) distinguishes approved scope from unresolved runtime settings. Historical proposals in [`RELEASE_3_1_DECISION_PACKAGE.md`](./RELEASE_3_1_DECISION_PACKAGE.md) do not override the current Founder instruction. Autonomous CIO behavior remains excluded.
 
 Autonomous employee behavior is a later, separately governed release. It is not part of Release 3.2 or authorized by this capability. AI or autonomous systems may not approve, publish, alter authorization, bypass lifecycle rules, or silently persist output.
 
@@ -193,7 +193,7 @@ Autonomous employee behavior is a later, separately governed release. It is not 
 
 - The Founder Simplicity Principle is recorded consistently in product and architecture documentation.
 - Release 3.2 and EO-050 through EO-054 are Engineering Complete; targeted post-remediation Founder Validation and final Independent Review passed with zero P0 and zero P1 findings.
-- Release 4 AI/CIO work remains separate and pending governance approval.
+- Release 4.1 Governed Content Intelligence is separately authorized; local implementation is present and connected validation remains pending. Autonomous CIO work remains excluded.
 - Routine navigation and all ten primary Founder actions are defined in business language.
 - Add School and School Spotlight have bounded deterministic implementations.
 - The School Spotlight request uses structured multi-select goals and audiences, an explicit primary emphasis, and structured media availability while preserving legacy drafts losslessly.
@@ -201,6 +201,16 @@ Autonomous employee behavior is a later, separately governed release. It is not 
 - Autosave persists in `internalFounderWorkflowDrafts` and remains separated from canonical Knowledge persistence.
 - The existing Knowledge Graph, authorization boundary, project lifecycle, package history, and Founder approval controls remain authoritative.
 - No upload, direct publishing, scheduling, external provider, external search, AI, EO-055 work, or public-site change is implied.
+
+## Release 4.1 Local Founder Experience
+
+Intelligence Center now contains an internal Content Intelligence panel. Select one approved School Spotlight version, choose Research official sources, open each source, and explicitly support or exclude every candidate claim. Save evidence decisions before requesting six platform drafts. Conflicts and information gaps remain visible. Every factual draft block carries a citation, and each result stores the exact approved package/version/content hash and research review revision.
+
+Draft formats are Instagram carousel slides and caption, TikTok scene/narration outline, YouTube short-video scenes and description, Facebook editorial post, X thread, and website article sections. These are structured plans for Founder review, not rendered media or public content. The initial original pattern registry is deliberately small; editorial quality and repetition still need the connected Malone review.
+
+Each research or drafting request reserves $0.50 against $10 per UTC month. Reservations remain counted after success, failure, or cancellation. Refresh reads status; it does not initiate new research. Cancel prevents late result saves. A changed approved package or evidence review prevents stale drafts from being used.
+
+Local implementation and fixture browser checks are present. Firebase server authentication and the actual approved Malone Version 2 binding are verified. Live database protection is active. Provider moderation rate limiting, authenticated browser persistence, and the successful connected research/draft evaluation remain unresolved. The existing deterministic School Spotlight flow remains available. See the [13-part audit and Founder checklist](./RELEASE_4_1_REENTRY_AUDIT.md).
 
 ## Risks of Overbuilding
 
@@ -214,3 +224,10 @@ Autonomous employee behavior is a later, separately governed release. It is not 
 - Adding social publishing integrations while only draft formatting is approved.
 - Expanding into bulk ingestion before the Knowledge Graph uniqueness registries are designed for higher scale.
 - Letting engineering-complete language imply Founder validation, independent review, merge approval, or release completion.
+
+## September 6, 2026 Release Reconciliation
+
+Release 3.2 and Release 3.2.1 are released and production validated. PR #7 and PR #8 are merged; all four Release 3.2 gates passed. Current GitHub main and Vercel Ready production are `cb2a4695db1301a4db8967866fd637d2f314d822`. The existing validation record above is historical evidence, not a new connected test. See the [re-entry audit](./RELEASE_4_1_REENTRY_AUDIT.md).
+
+
+September 8 checkpoint: the Founder-approved namespace-only Firestore protection was activated and verified while preserving live console changes. The actual Malone Version 2 passed connected binding checks. A bounded research run reserved $0.50 and stopped at OpenAI input moderation; follow-up diagnostics show HTTP 429 rate limiting. No Research Package or drafts were created and canonical hashes/counts were unchanged. Provider moderation availability, the successful connected content evaluation, and all four release gates remain pending. Source work remains uncommitted and unpushed; no website deployment occurred. See the current re-entry audit for evidence.
