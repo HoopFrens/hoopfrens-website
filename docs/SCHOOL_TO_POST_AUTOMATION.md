@@ -1,5 +1,18 @@
 # School-to-post automation — September 13, 2026
 
+## September 13 — Production release preparation
+
+The Founder instructed “move to production” and confirmed keeping media local with a “Finish on this Mac” handoff. This authorizes release preparation and deployment when the established gates and operational prerequisites pass; prior no-deployment language is historical. It does not authorize legacy PR #2 or #5 changes.
+
+Current preparation: patched Next.js/eslint-config-next 16.3.5 and Firebase Admin 14.4.0; production server-only Firebase credential support; explicit cloud-to-local rendering handoff that opens only an available package for the signed-in account. Server rendering remains local-only. Existing AI limits are unchanged.
+
+Validation: 56 focused server/workflow tests and 121 domain/UI/rules tests passed with no skips (177 total), full ESLint, TypeScript and production build passed. A stale navigation-label assertion was updated to the approved simple labels. Initial all-tests invocation mixed React server and browser conditions; initial reused-emulator failures disappeared with the correct conditions and a clean isolated emulator. Synthetic browser verification confirmed the cloud handoff text and fixed localhost link. No real paid research ran.
+
+The current production dependency audit has zero critical/high and two moderate reports (gaxios/uuid). The reachable dependency use found in gaxios is uuid v4 for multipart boundaries; the advisory concerns supplied buffers in v3/v5/v6. This is retained dependency debt, not a claim of whole-program vulnerability clearance.
+
+Production still requires secure OpenAI/Firebase server credential provisioning, authenticated smoke verification, and final independent review. Automatic approval review rejected the attempted production credential transfer before execution and requested explicit approval for those specific credentials/destination; no secret was transferred. The Founder decision is pending. Engineering Complete → Founder Validation → Independent Review → Merge Approval remain distinct gates; successful checks alone do not pass all four. Main/production and legacy PRs remain unchanged at this preparation checkpoint.
+
+
 ## September 13 — Founder-authorized commit and push
 
 The Founder explicitly instructed “Commit and push.” This supersedes the earlier uncommitted/unpushed hold for the accumulated governed-content, local Instagram rendering and school-to-post workflow implementation on `codex/main/release-4-1-governed-content-intelligence`. Earlier checkpoint descriptions of uncommitted work are historical. Credentials, local media, generated proofs, ZIPs and test artifacts stay outside Git. This instruction authorizes Git publication only; it does not pass Founder Validation, Independent Review or Merge Approval, authorize merging legacy PRs, or authorize production deployment. Existing dependency findings and the first real new-school/football trial remain release prerequisites.

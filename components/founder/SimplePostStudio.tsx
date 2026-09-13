@@ -47,7 +47,14 @@ export function SimplePostStudio({ onDirtyChange }: { onDirtyChange?(value: bool
   }
   useEffect(() => {
     let active = true;
-    api().then(value => { if (active) setState(value); }).catch(e => { if (active) setError(explain(e.message)); });
+    api().then((value: State) => {
+      if (!active) return;
+      setState(value);
+      const requested = new URLSearchParams(window.location.search).get("project");
+      const found = value.packages.find(p => p.projectId === requested);
+      if (found) { setProjectId(found.projectId); setSchool(found.schoolName); setTeam(found.team || "Men's basketball"); }
+      else if (requested) setNotice("That saved post is not available to this account. Choose your school below.");
+    }).catch(e => { if (active) setError(explain(e.message)); });
     return () => { active = false; };
   }, []);
   const pollRunning = !busy && running.some(run => Date.parse(run.expiresAt) > Date.parse(state?.observedAt || ""));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { photoCaption } from "@/domain/content-intelligence/photos";
 import { auth } from "@/lib/firebase";
 import type { Storyboard } from "@/domain/content-intelligence/storyboard";
@@ -16,7 +16,25 @@ async function api(query = "", body?: unknown) {
 }
 function explain(error: unknown) { const code = error instanceof Error ? error.message : ""; return renderMessages[code] || "This action could not finish. Refresh its status before trying again."; }
 
-export function InstagramRenderPanel({ board, dirty, simple = false }: { board: Storyboard; dirty: boolean; simple?: boolean }) {
+const subscribeToHost = () => () => {};
+const localHostSnapshot = () => ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+const serverHostSnapshot = () => null;
+type RenderPanelProps = { board: Storyboard; dirty: boolean; simple?: boolean };
+export function InstagramRenderPanel(props: RenderPanelProps) {
+  const local = useSyncExternalStore(subscribeToHost, localHostSnapshot, serverHostSnapshot);
+  if (local === null) return <p role="status">Checking where to make your pictures…</p>;
+  if (local) return <LocalInstagramRenderPanel {...props} />;
+  const url = `http://localhost:3017/executive-workspace/intelligence-center?project=${encodeURIComponent(props.board.binding.projectId)}`;
+  return <section className="mt-6 rounded border border-white/20 p-5" aria-labelledby="local-finish-title">
+    <p className="text-xs font-bold uppercase tracking-widest text-red-300">3. Download your post</p>
+    <h5 id="local-finish-title" className="mt-2 text-xl font-black">Finish on this Mac</h5>
+    <p className="mt-3 text-sm leading-6 text-zinc-300">Your saved post is ready to open on your Mac. Make the pictures and download the ZIP there. Your photos and finished files stay on your Mac.</p>
+    <p className="mt-2 text-sm leading-6 text-zinc-300">Keep the local Hoop Frens app running, then open it below and sign in with the same account. Choose Download in that app to make your pictures.</p>
+    {props.dirty ? <p role="alert" className="mt-3 text-amber-100">Save your changes before opening the local app.</p> : <a className={`${button} mt-4 inline-block bg-red-700`} href={url} target="_blank" rel="noopener noreferrer">Open saved post on this Mac</a>}
+    <p className="mt-3 text-xs text-zinc-400">Using a phone or another computer? Open the local app on the Mac where your files are stored.</p>
+  </section>;
+}
+function LocalInstagramRenderPanel({ board, dirty, simple = false }: RenderPanelProps) {
   const [jobs, setJobs] = useState<RenderSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

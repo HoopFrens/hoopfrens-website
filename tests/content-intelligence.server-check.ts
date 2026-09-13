@@ -230,3 +230,25 @@ test("Founder wording review persists an atomic before/after audit and rejects s
     assert.equal((await repository.ref(collections.research, original.id).get()).data()?.revision, 2);
   } finally { await db.terminate(); await deleteApp(app); }
 });
+
+
+test("production Firebase credentials fail closed and redact malformed or mismatched secrets", async () => {
+  const { serverCredential } = await import("../server/content-intelligence/firebase");
+  const saved = { vercel: process.env.VERCEL, credential: process.env.FIREBASE_SERVICE_ACCOUNT_JSON };
+  try {
+    process.env.VERCEL = "1";
+    delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    assert.throws(() => serverCredential("expected-project"), /^IntelligenceError: server-configuration-required$/);
+    for (const value of ["synthetic-private-invalid", JSON.stringify({type:"service_account",project_id:"other-project",client_email:"fixture@example.test",private_key:"synthetic-private-invalid"})]) {
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON = value;
+      assert.throws(() => serverCredential("expected-project"), /^IntelligenceError: server-configuration-required$/);
+    }
+    const { generateKeyPairSync } = await import("node:crypto");
+    const { privateKey } = generateKeyPairSync("rsa", {modulusLength:2048});
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON = JSON.stringify({type:"service_account",project_id:"expected-project",client_email:"fixture@example.test",private_key:privateKey.export({type:"pkcs8",format:"pem"})});
+    assert.equal(typeof serverCredential("expected-project").getAccessToken, "function");
+  } finally {
+    if (saved.vercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = saved.vercel;
+    if (saved.credential === undefined) delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON; else process.env.FIREBASE_SERVICE_ACCOUNT_JSON = saved.credential;
+  }
+});
