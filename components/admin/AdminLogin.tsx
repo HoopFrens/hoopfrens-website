@@ -11,6 +11,7 @@ export function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(isFirebaseConfigured);
   const [error, setError] = useState("");
+  const [recoveryHref, setRecoveryHref] = useState("");
 
   useEffect(() => {
     if (!auth) return;
@@ -24,11 +25,32 @@ export function AdminLogin() {
     if (!auth) return;
     setLoading(true);
     setError("");
+    setRecoveryHref("");
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
       router.replace("/admin");
-    } catch {
-      setError("Google sign-in could not be completed.");
+    } catch (cause) {
+      const code = cause && typeof cause === "object" && "code" in cause ? cause.code : "";
+      if (code === "auth/unauthorized-domain") {
+        if (window.location.hostname === "127.0.0.1") {
+          const localLogin = new URL(window.location.href);
+          localLogin.hostname = "localhost";
+          setRecoveryHref(localLogin.href);
+          setError("Google sign-in does not allow this local address. Open the localhost sign-in page below and try again.");
+        } else {
+          setError("Google sign-in is not enabled for this website address. Ask your administrator to check the Firebase authorized domains.");
+        }
+      } else if (code === "auth/popup-blocked") {
+        setError("The sign-in window was blocked. Allow pop-ups for this site, or open this same address in Chrome or Safari and try again.");
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setError("The sign-in window closed before sign-in finished. Try again and complete the Google sign-in window. If it keeps closing, open this same address in Chrome or Safari.");
+      } else if (code === "auth/network-request-failed") {
+        setError("Google sign-in could not connect. Check your internet connection and try again.");
+      } else if (code === "auth/operation-not-allowed") {
+        setError("Google sign-in is not enabled. Ask your administrator to check the sign-in provider settings.");
+      } else {
+        setError("Google sign-in could not be completed. Try opening this same address in Chrome or Safari, then sign in again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -37,6 +59,7 @@ export function AdminLogin() {
   async function loginWithEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!auth) return;
+    setRecoveryHref("");
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
@@ -101,6 +124,7 @@ export function AdminLogin() {
         </form>
 
         {error ? <p role="alert" className="mt-4 text-sm font-bold text-red-400">{error}</p> : null}
+        {recoveryHref ? <a href={recoveryHref} className="mt-3 inline-block text-sm font-bold text-white underline underline-offset-4">Open localhost sign-in</a> : null}
       </div>
     </section>
   );

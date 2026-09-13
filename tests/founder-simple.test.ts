@@ -870,7 +870,7 @@ test("interrupted Review and Approval draft synchronization remains retry-safe",
 });
 
 test("Founder-Simple navigation and progress use the approved business language", () => {
-  const approvedLabels = ["Today", "Create", "Work", "Intelligence", "Review & Approve", "Library"];
+  const approvedLabels = ["Today", "Create", "My work", "Make a post", "Review & Approve", "Library"];
   for (const label of approvedLabels) assert.ok(executiveSpaces.some((space) => space.label === label));
   assert.ok(executiveSpaces.some((space) => space.label === "Knowledge Center"));
 

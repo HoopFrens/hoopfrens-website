@@ -2,8 +2,8 @@ import { ExecutiveWorkspaceShell } from "@/components/executive/ExecutiveWorkspa
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Intelligence Center",
-  description: "Internal Hoop Frens intelligence workspace shell.",
+  title: "Make a post",
+  description: "Create and review an Instagram carousel with a caption.",
 };
 
 export default function IntelligenceCenterPage() {

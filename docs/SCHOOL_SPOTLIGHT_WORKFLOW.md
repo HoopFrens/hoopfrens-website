@@ -2,7 +2,7 @@
 
 ## Status and Purpose
 
-This document defines the implemented deterministic School Spotlight experience for EO-052 through EO-054. Engineering is complete with all P1 remediation applied. Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, passed. Final Independent Review passed with zero P0 and zero P1 findings; required pull-request checks and the merge remain pending.
+This document defines the implemented deterministic School Spotlight experience for EO-052 through EO-054. Engineering is complete with all P1 remediation applied. Founder Validation, including the targeted post-remediation repeat using the existing Malone University Version 2, passed. Final Independent Review passed with zero P0 and zero P1 findings; PR #7 is merged and Release 3.2 is released and production validated.
 
 The workflow turns verified Headquarters information into an editable, Hoop Frens-branded content package without AI, external search, external APIs, automated publishing, or unsupported facts.
 
@@ -260,6 +260,6 @@ Primary error copy must not expose Firestore paths, repository names, stack trac
 
 ## Verification State
 
-EO-052 through EO-054 are Engineering Complete. Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; required pull-request checks and the merge remain pending.
+EO-052 through EO-054 are Engineering Complete. Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; PR #7 is merged and Release 3.2 is released and production validated.
 
-EO-055 has not started. This workflow adds no AI, external search, external API, upload, scheduling, publishing, or public-site capability.
+EO-055 was not part of Release 3.2; it is now authorized within the active Release 4.1 batch, with local implementation now present and connected validation pending. This workflow adds no AI, external search, external API, upload, scheduling, publishing, or public-site capability.

@@ -20,7 +20,8 @@ service cloud.firestore {
     }
 
     function isRestrictedInternalCollection(collectionName) {
-      return isInternalKnowledgeCollection(collectionName)
+      return collectionName.matches('internalContentIntelligence.*')
+        || isInternalKnowledgeCollection(collectionName)
         || collectionName == 'internalFounderWorkflowDrafts'
         || collectionName == 'internalProductionPackages'
         || collectionName == 'internalSchoolSpotlightPackageFacts'

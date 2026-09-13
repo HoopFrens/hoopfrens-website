@@ -1,6 +1,7 @@
-import { ArtifactStatus, ArtifactType } from "../business-object";
-import { ExecutiveServiceType } from "../services";
-import { ProjectType, ProjectWorkspace } from "../project";
+import { ArtifactStatus } from "../business-object/ArtifactStatus";
+import { ArtifactType } from "../business-object/ArtifactType";
+import { ExecutiveServiceType } from "../services/ExecutiveServiceType";
+import { ProjectType, ProjectWorkspace } from "../project/types";
 import {
   FounderWorkflowKind,
   FounderWorkflowStatus,
@@ -19,7 +20,7 @@ import {
   SpotlightPlatform,
   SpotlightTone,
 } from "./types";
-import { KnowledgeConfidence, KnowledgeSourceReliability } from "../knowledge";
+import { KnowledgeConfidence, KnowledgeSourceReliability } from "../knowledge/types";
 
 export class FounderWorkflowValidationError extends Error {
   constructor(message: string) {

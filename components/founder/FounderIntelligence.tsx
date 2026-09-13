@@ -11,6 +11,8 @@ import {
 } from "@/domain/knowledge";
 import { formatHoopFrensRegion } from "@/domain/shared";
 import { db } from "@/lib/firebase";
+import { SimplePostStudio } from "./SimplePostStudio";
+import { GovernedContentIntelligence } from "./GovernedContentIntelligence";
 import { knowledgeService } from "@/services";
 import { AlertTriangle, ArrowRight, CircleHelp, Loader2, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +41,8 @@ export function FounderIntelligence() {
   const repository = useMemo(() => db ? createFirestoreKnowledgeGraphRepository(db) : null, []);
   const [graph, setGraph] = useState<KnowledgeGraph | null>(null);
   const [query, setQuery] = useState("");
+  const [advanced, setAdvanced] = useState(false);
+  const [postDirty, setPostDirty] = useState(false);
   const [loading, setLoading] = useState(Boolean(repository));
   const [error, setError] = useState(repository ? "" : "School information is temporarily unavailable. Try again or contact a Headquarters administrator.");
 
@@ -69,9 +73,10 @@ export function FounderIntelligence() {
   return (
     <div className="min-h-full bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1320px]">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-red-500">Intelligence</p>
-        <h2 className="mt-2 text-3xl font-black uppercase tracking-tight sm:text-4xl">School &amp; Basketball Intelligence</h2>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-zinc-400">Find trusted School information, see its verification status, and begin the next Founder action without opening maintenance tools.</p>
+        <button className="mb-5 min-h-11 rounded-lg border border-white/20 px-4 py-2 text-sm font-bold disabled:opacity-40" disabled={postDirty} onClick={() => setAdvanced(value => !value)}>{advanced ? "Back to simple post maker" : "More options"}</button>
+        {postDirty && <p className="mb-4 text-sm text-zinc-400">Save or discard post changes before opening more options.</p>}
+        {advanced ? <GovernedContentIntelligence onDirtyChange={setPostDirty} /> : <SimplePostStudio onDirtyChange={setPostDirty} />}
+        <details className="mt-10 rounded-xl border border-white/15 p-4"><summary className="min-h-11 cursor-pointer py-2 font-bold">School directory and setup</summary>
 
         {error ? <div role="alert" className="mt-5 border border-amber-400/30 bg-amber-400/10 p-4 text-sm font-bold text-amber-100">{error}</div> : null}
 
@@ -108,6 +113,7 @@ export function FounderIntelligence() {
             </section>
           ) : <div className="mt-6 border border-white/10 bg-black p-8 text-center"><h3 className="text-xl font-black uppercase">No matching Schools</h3><p className="mt-2 text-sm font-bold text-zinc-500">Try another search or use Add School from Create.</p></div>
         ) : null}
+        </details>
       </div>
     </div>
   );

@@ -1,5 +1,23 @@
 # Headquarters Product Roadmap
 
+## September 13 — Production release preparation
+
+The Founder instructed “move to production” and confirmed keeping media local with a “Finish on this Mac” handoff. This authorizes release preparation and deployment when the established gates and operational prerequisites pass; prior no-deployment language is historical. It does not authorize legacy PR #2 or #5 changes.
+
+Current preparation: patched Next.js/eslint-config-next 16.3.5 and Firebase Admin 14.4.0; production server-only Firebase credential support; explicit cloud-to-local rendering handoff that opens only an available package for the signed-in account. Server rendering remains local-only. Existing AI limits are unchanged.
+
+Validation: 56 focused server/workflow tests and 121 domain/UI/rules tests passed with no skips (177 total), full ESLint, TypeScript and production build passed. A stale navigation-label assertion was updated to the approved simple labels. Initial all-tests invocation mixed React server and browser conditions; initial reused-emulator failures disappeared with the correct conditions and a clean isolated emulator. Synthetic browser verification confirmed the cloud handoff text and fixed localhost link. No real paid research ran.
+
+The current production dependency audit has zero critical/high and two moderate reports (gaxios/uuid). The reachable dependency use found in gaxios is uuid v4 for multipart boundaries; the advisory concerns supplied buffers in v3/v5/v6. This is retained dependency debt, not a claim of whole-program vulnerability clearance.
+
+Production still requires secure OpenAI/Firebase server credential provisioning, authenticated smoke verification, and final independent review. Automatic approval review rejected the attempted production credential transfer before execution and requested explicit approval for those specific credentials/destination; no secret was transferred. The Founder decision is pending. Engineering Complete → Founder Validation → Independent Review → Merge Approval remain distinct gates; successful checks alone do not pass all four. Main/production and legacy PRs remain unchanged at this preparation checkpoint.
+
+
+## September 13 — Founder-authorized commit and push
+
+The Founder explicitly instructed “Commit and push.” This supersedes the earlier uncommitted/unpushed hold for the accumulated governed-content, local Instagram rendering and school-to-post workflow implementation on `codex/main/release-4-1-governed-content-intelligence`. Earlier checkpoint descriptions of uncommitted work are historical. Credentials, local media, generated proofs, ZIPs and test artifacts stay outside Git. This instruction authorizes Git publication only; it does not pass Founder Validation, Independent Review or Merge Approval, authorize merging legacy PRs, or authorize production deployment. Existing dependency findings and the first real new-school/football trial remain release prerequisites.
+
+
 ## 1. Vision
 
 Headquarters is the internal operating environment for Hoop Frens, an AI-native basketball intelligence platform. It gives the Founder one place to direct work, understand company state, continue active projects, review deliverables, and make decisions.
@@ -23,10 +41,10 @@ Headquarters is not the public Hoop Frens website. It is the private operating s
 | --- | --- | --- |
 | Release 1 | Completed | Headquarters shell and the Founder create, continue, review, and approve workflow are established. |
 | Release 2 | Released | Release 2.4 is released. Founder validation is complete, the final Release Gate is approved with minor follow-up, and EO-025 through EO-045 are complete. |
-| Release 3 | In progress | Release 3.1 Capability 1 is released. Release 3.2 EO-050 through EO-054 are ready to commit; Founder Validation and final Independent Review passed with zero P0 and zero P1 findings. |
-| Release 4 | Planned | Governed AI assistance built on the deterministic operating model. |
+| Release 3 | Released | Release 3.1 Canonical Knowledge Graph, Release 3.2 EO-050 through EO-054, and Release 3.2.1 Production Workspace UI Hotfix are released. Release 3.2 and 3.2.1 are production validated. |
+| Release 4.1 | Active implementation batch | EO-055 through EO-059 is implemented locally; connected Malone research, evidence review and six drafts succeeded after the tier update. Saved Instagram Story Studio is locally verified. Authenticated Founder interface validation and remaining release gates are pending. |
 
-Release 2.4 is complete. Release 3.1 Capability 1 is released, and EO-046 through EO-049 are complete. Engineering Complete, Founder Validation, Independent Review, and Merge Approval all passed. Accepted P2/P3 technical debt remains tracked. Release 3.2 EO-050 through EO-054 are Engineering Complete; targeted post-remediation Founder Validation and final Independent Review passed with zero P0 and zero P1 findings. Founder authorization for the commit, pull request, and conditional merge workflow is granted; required pull-request checks and the merge remain pending. AI reasoning and Release 4 implementation have not started and require separate governance decisions and Engineering Orders.
+Release 2.4 and Release 3.1 are released. Release 3.2 was merged through PR #7 at `e5b9b5b473db01686cbf1843b39a4e9a0f055b83`; Release 3.2.1 was merged through PR #8 at `cb2a4695db1301a4db8967866fd637d2f314d822`. On September 6, 2026, GitHub main and Vercel Ready production were independently checked against that exact hotfix commit. The Founder supplied confirmation that both releases are production validated; this re-entry does not claim a new authenticated production UX test. Release 4.1 is the active authorized batch, with local implementation present and no Release 4 commit yet. See the [re-entry audit](./RELEASE_4_1_REENTRY_AUDIT.md).
 
 ## 4. Release 1 - Completed
 
@@ -95,13 +113,13 @@ EO-025 through EO-045 are complete for Release 2.4. The hardening pass adds prod
 
 Release 2.4 implements concrete Research, Outline, and Production Packages only. Review and Publishing remain reserved artifact types; concrete Review or Publishing package models, repositories, and viewers are not part of this release.
 
-## 6. Release 3 - In Progress
+## 6. Release 3 - Released
 
 Release 3 establishes deterministic, source-aware knowledge and then makes that capability useful through a Founder-Simple Headquarters experience. It does not introduce production AI. Governed Executive Reasoning remains planned for Release 4.
 
 ### Release 3.1 Capability Status
 
-- **Release 3:** In progress beyond the released Capability 1 only through future approved Engineering Orders
+- **Release 3:** Released through Release 3.2.1; further capabilities require separate approved Engineering Orders
 - **Release 3.1 Capability 1:** Released
 - **Knowledge Graph foundation:** Implemented, verified, and released
 - **Release gates:** Engineering Complete, Founder Validation, Independent Review, and Merge Approval passed
@@ -133,43 +151,53 @@ Remaining technical debt is explicit. Accepted P2 debt includes aggregate-regist
 
 ### Release 3.2 Founder-Simple Headquarters
 
-- **Status:** Ready to commit; Engineering, targeted post-remediation Founder Validation, and final Independent Review passed
+- **Status:** Released and production validated through PR #7; all four release gates passed
 - **Founder workflow:** `Request -> Review -> Customize -> Approve`
 - **Canonical lifecycle:** Unchanged and authoritative
 - **AI, external APIs, external search, and autonomy:** Not included
-- **Release gates:** Engineering Complete, Founder Validation, and Independent Review passed; Founder merge-workflow authorization granted; required pull-request checks and merge pending
+- **Release gates:** Engineering Complete, Founder Validation, Independent Review, and Merge Approval passed; PR #7 merged July 26, 2026
 
 The Founder Simplicity Principle is permanent: the Founder should not need to understand nodes, relationships, repositories, schemas, canonical records, or internal IDs to complete routine Hoop Frens work. Headquarters must translate business intent into deterministic system actions and reveal implementation details only when explicitly requested.
 
 | Engineering Order | Capability | Status |
 | --- | --- | --- |
-| EO-050 | Founder-Simple Foundation | Ready to commit; Founder Validation and Independent Review passed |
-| EO-051 | Guided Add School | Ready to commit; Founder Validation and Independent Review passed |
-| EO-052 | School Spotlight Request and Verified Information Review | Ready to commit; Founder Validation and Independent Review passed |
-| EO-053 | Deterministic School Spotlight Package | Ready to commit; Founder Validation and Independent Review passed |
-| EO-054 | Founder Customization and Approval | Ready to commit; Founder Validation and Independent Review passed |
+| EO-050 | Founder-Simple Foundation | Released and production validated |
+| EO-051 | Guided Add School | Released and production validated |
+| EO-052 | School Spotlight Request and Verified Information Review | Released and production validated |
+| EO-053 | Deterministic School Spotlight Package | Released and production validated |
+| EO-054 | Founder Customization and Approval | Released and production validated |
 
 The completed engineering batch provides Founder-Simple navigation, guided Add School, a structured School Spotlight request wizard, source-backed fact review, deterministic manual content-package assembly, platform and branding customization, durable workflow drafts, and explicit Founder approval through the existing lifecycle. The request records multi-select goals and audiences, the three approved uses for one shared vertical-video plan, a primary emphasis with optional specific angle, structured media availability with optional descriptions, shot-list preference, and CTA. Recognized legacy freeform request values map into those controls, while unmatched Founder wording remains visible and editable rather than being discarded.
 
-Drafts persist in `internalFounderWorkflowDrafts`. `SchoolSpotlightPackage` is a compatible `ProductionPackage` stored and versioned in the existing `internalProductionPackages` collection. The batch does not redesign the released Knowledge Graph, fabricate facts, upload media, publish or schedule content, modify the public website, or authorize later Founder actions. EO-055 has not started.
+Drafts persist in `internalFounderWorkflowDrafts`. `SchoolSpotlightPackage` is a compatible `ProductionPackage` stored and versioned in the existing `internalProductionPackages` collection. The batch does not redesign the released Knowledge Graph, fabricate facts, upload media, publish or schedule content, modify the public website, or authorize later Founder actions. EO-055 was not part of Release 3.2; it is now authorized within the active Release 4.1 batch, with local implementation now present and connected validation pending.
 
 Targeted post-remediation Founder Validation reused the existing Malone University Version 2 and confirmed that `Request -> Review -> Customize -> Approve` remained functional, the exact approved version remained readable after refresh, and no duplicate School, project, workflow draft, or package was created. Approval did not publish, schedule, upload, or externally send content. No new browser-console or runtime errors were observed, and the deployed Firestore rules were confirmed active. Final Independent Review passed with zero P0 and zero P1 findings.
 
 Additional deterministic actions—Facility Tour, Coach Feature, Player Feature, Compare Schools, Recruiting Guide, Social Campaign, New Intelligence review, a centralized content-approval queue, and an expanded Founder-Simple Executive Brief—remain product directions that require later approved Engineering Orders.
 
-## 7. Release 4 - Planned
+### Release 3.2.1 Production Workspace UI Hotfix
 
-Release 4 is the governed AI assistance phase. Production AI may be introduced only after deterministic workflows and trusted data foundations are approved.
+Released and production validated. PR #8 corrected the Projects table, Executive Services layout, and visible Sign Out action. Existing Malone University approved Version 2 was preserved according to the release evidence. Production Ready at `cb2a4695db1301a4db8967866fd637d2f314d822` was rechecked September 6, 2026.
 
-Planned outcomes:
+## 7. Release 4.1 - Active Implementation Batch
 
-- AI-assisted intent interpretation behind the existing Intent Engine contract.
-- AI-assisted research, synthesis, and recommendations using verified sources.
-- Clear confidence, provenance, and Founder review requirements.
-- Observability, cost controls, failure handling, and auditability.
-- Deterministic fallback behavior for critical workflows.
+September 10–11 scope extension: the Founder authorized the proposed Instagram still-graphics work. A local-only renderer and proof-approval/download interface are now implemented alongside Release 4.1; final graphic exports no longer remain wholly excluded from the program. Cloud deployment, video/voice, publishing and scheduling remain excluded. This extension does not silently renumber EO-055–EO-059 or authorize other later orders. See [local still-graphics implementation, evidence and release prerequisites](./INSTAGRAM_STILL_RENDERING.md).
 
-No AI provider, model, automation policy, or production workflow is approved by this roadmap alone.
+**Governed Content Intelligence** is the current Founder-authorized batch. After initially selecting reuse, the Founder created and stored a new key and confirmed the intended organization, project, and restricted permissions. Safe model-list verification returned HTTP 200. The Founder approved $0.50 per request and $10 per month. Firebase server authentication, reads and live database protection were verified. The tier update resolved the earlier moderation limit; connected Malone research, explicit evidence review revision 2 and all six platform drafts succeeded. The September 9 saved Instagram Story Studio adds local editing and layout review without an AI charge. See the [current interface scope and checklist](./RELEASE_4_1_STORY_STUDIO.md). Authenticated Founder browser validation remains pending.
+
+| Engineering Order | Capability | Status |
+| --- | --- | --- |
+| EO-055 | Secure AI Gateway and Governance Policy | Local implementation; connected service checks passed; release review pending |
+| EO-056 | Governed Research and Approved-Source Intake | Connected Malone Research Package persisted; Founder browser validation pending |
+| EO-057 | Claim, Evidence, Confidence, and Conflict Ledger | Malone review revision 2 persisted; Founder browser validation pending |
+| EO-058 | Hoop Frens Editorial Pattern and Voice Registry | Original registry and editable storyboard present; editorial validation pending |
+| EO-059 | Structured Platform Output Generation | Six connected drafts persisted; Story Studio locally verified; Founder validation pending |
+
+The approved scope is Founder-initiated research with automatic Research Package creation, an approved-source policy, claim-level citations and evidence, rejection of unsupported claims, visible conflicts and missing information, original Hoop Frens editorial content, and structured Instagram, TikTok, YouTube, Facebook, X, and website drafts. Every result must link to exactly one approved SchoolSpotlightPackage version. Budget, bounded retry, cancellation, audit, failure controls, and a connected Malone University evaluation are required. Canonical Knowledge Graph mutations are never automatic.
+
+EO-060 and later remain outside the original Release 4.1 batch. The separately authorized local still-graphics extension above now implements exact-size PNG proofs and approved downloads. MP4/voiceover, social uploading, publishing, scheduling, external sending, analytics connectors, autonomous agents, public-site changes and Knowledge Graph replacement remain excluded. Website drafts are internal draft content only.
+
+The established gates remain **Engineering Complete → Founder Validation → Independent Review → Merge Approval**. Release 4.1 has passed none of these gates. Keep all work uncommitted and unpushed for Founder Validation. Legacy PR #2 and PR #5 require separate Founder authorization before closing or merging. The [re-entry audit](./RELEASE_4_1_REENTRY_AUDIT.md) records current evidence and remaining prerequisites.
 
 ## 8. Workspace Model
 
@@ -240,3 +268,23 @@ Release targets should be set only after baseline usage is measured. Headquarter
 ## Documentation Governance
 
 Beginning with EO-028, every approved Engineering Order must update this roadmap when milestone scope, status, sequencing, or completion changes. The same order must update the [Decision Log](./DECISIONS.md) when it changes a product or architecture decision.
+
+
+September 8 checkpoint: the Founder-approved namespace-only Firestore protection was activated and verified while preserving live console changes. The actual Malone Version 2 passed connected binding checks. A bounded research run reserved $0.50 and stopped at OpenAI input moderation; follow-up diagnostics show HTTP 429 rate limiting. No Research Package or drafts were created and canonical hashes/counts were unchanged. Provider moderation availability, the successful connected content evaluation, and all four release gates remain pending. Source work remains uncommitted and unpushed; no website deployment occurred. See the current re-entry audit for evidence.
+
+
+### September 13 Founder workflow priority
+
+Instagram carousel + caption for manual upload is the first simple user journey. The local default now offers school selection, prepared post review, and local image download; existing detailed tools are secondary. School/team intake is present, but general school onboarding and football research are not connected. This is an interface/inbox checkpoint, not completion of the broader school-to-publish goal and not a passed release gate. [Simple workflow implementation and remaining work](./SIMPLE_POST_WORKFLOW.md).
+
+## September 13 — Photo selection and cost-controlled completion
+
+The Founder explicitly removed separate photo approval and requested broader facility/campus imagery. The local implementation now discovers official-school photo candidates without AI calls, provides category/slide selection, includes used-photo credits in the downloaded caption, and keeps unknown usage rights visible without blocking export. Exact evidence binding, copy review, proof approval and all four release gates remain intact. New proofs are required to use the updated rendering policy.
+
+Arbitrary-school and football automation remain unfinished. The next implementation sequence and spending boundaries are documented in [the low-cost completion plan](./LOW_COST_AUTOMATION_PLAN.md). There is no new cloud storage, provider permission, publishing, background agent or deployment authorization implied by this checkpoint. Work remains uncommitted and unpushed.
+
+## September 13 — Connected new-school and football workflow
+
+The Founder authorized the next implementation step. New-school, men's-basketball, women's-basketball and football requests now proceed from explicit official-site confirmation to selected-team research and automatic saved Instagram assembly after facts review. This supersedes the prior waiting-only checkpoint. Preliminary request research is clearly separate from an approved package; the explicit facts-review action approves one immutable editorial SchoolSpotlightPackage version before assembly/export. Canonical Knowledge Graph and project lifecycle records remain untouched. Football output uses Field Notes.
+
+The existing $0.50/request and $10/month allowance, local media, manual final review/upload and all four release gates remain. Fifty-five isolated tests passed; real new-school/football provider quality and Founder acceptance are still to be validated. No paid provider requests, commit/push, deployment or legacy PR changes during this implementation. [Current behavior and exact files](./SCHOOL_TO_POST_AUTOMATION.md), [ADR-007](./architecture-decisions/ADR-007-request-scoped-school-posts.md).

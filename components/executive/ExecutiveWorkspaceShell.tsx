@@ -274,7 +274,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
   {
     id: "executive-office",
     label: "Today",
-    href: "/executive-workspace/today",
+    href: "/executive-workspace/executive-office",
     eyebrow: "Headquarters",
     title: "Today",
     description: "See priorities, open decisions, and the best next action for Hoop Frens.",
@@ -293,7 +293,7 @@ export const executiveSpaces: ExecutiveSpace[] = [
   },
   {
     id: "projects",
-    label: "Work",
+    label: "My work",
     href: "/executive-workspace/projects",
     eyebrow: "Portfolio",
     title: "Work",
@@ -303,10 +303,10 @@ export const executiveSpaces: ExecutiveSpace[] = [
   },
   {
     id: "intelligence-center",
-    label: "Intelligence",
+    label: "Make a post",
     href: "/executive-workspace/intelligence-center",
-    eyebrow: "Research",
-    title: "Intelligence",
+    eyebrow: "Instagram",
+    title: "Make a post",
     description: "Review trusted School and basketball information, sources, and items needing attention.",
     icon: MapIcon,
     panels: ["Signals", "Sources", "Watchlist"],
@@ -373,21 +373,8 @@ export const executiveSpaces: ExecutiveSpace[] = [
   },
 ];
 
-const primaryExecutiveSpaceIds: ExecutiveSpaceId[] = [
-  "executive-office",
-  "create",
-  "projects",
-  "intelligence-center",
-  "review-approve",
-  "library",
-];
-
-const advancedExecutiveSpaceIds: ExecutiveSpaceId[] = [
-  "knowledge-center",
-  "production-studio",
-  "strategy-room",
-  "product-lab",
-];
+const primaryExecutiveSpaceIds: ExecutiveSpaceId[] = ["intelligence-center", "projects"];
+const advancedExecutiveSpaceIds: ExecutiveSpaceId[] = ["executive-office", "create", "review-approve", "library", "knowledge-center", "production-studio", "strategy-room", "product-lab"];
 
 export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: ExecutiveSpaceId }) {
   const [status, setStatus] = useState<WorkspaceStatus>(isFirebaseConfigured ? "checking" : "unconfigured");
@@ -521,7 +508,7 @@ export function ExecutiveWorkspaceShell({ activeSpaceId }: { activeSpaceId: Exec
             <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Executive Workspace</p>
           </div>
           <nav className="flex gap-1 overflow-x-auto p-2 lg:grid lg:overflow-visible lg:p-3" aria-label="Headquarters navigation">
-            {executiveSpaces.filter((space) => primaryExecutiveSpaceIds.includes(space.id)).map((space) => {
+            {executiveSpaces.filter((space) => primaryExecutiveSpaceIds.includes(space.id)).sort((a,b) => primaryExecutiveSpaceIds.indexOf(a.id) - primaryExecutiveSpaceIds.indexOf(b.id)).map((space) => {
               const Icon = space.icon;
               const active = space.id === activeSpace.id;
               return (
